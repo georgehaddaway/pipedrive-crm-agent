@@ -4,3 +4,5 @@ data/gmail-token.json
 data/runs/
 data/jsq-export.csv
 *.log
+
+.DS_Store
