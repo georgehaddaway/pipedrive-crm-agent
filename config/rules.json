@@ -1,0 +1,38 @@
+{
+  "stages": {
+    "initial_outreach": {
+      "followUpDays": 3,
+      "maxAttempts": 3,
+      "templateName": "initial_outreach"
+    },
+    "meeting_scheduled": {
+      "followUpDays": 7,
+      "maxAttempts": 2,
+      "templateName": "meeting_followup"
+    },
+    "due_diligence": {
+      "followUpDays": 5,
+      "maxAttempts": 4,
+      "templateName": "due_diligence"
+    },
+    "negotiation": {
+      "followUpDays": 2,
+      "maxAttempts": 5,
+      "templateName": "negotiation"
+    },
+    "closed": {
+      "followUpDays": null,
+      "maxAttempts": 0,
+      "templateName": null
+    }
+  },
+  "priorityOverrides": {
+    "high": { "multiplier": 0.5 },
+    "medium": { "multiplier": 1.0 },
+    "low": { "multiplier": 2.0 }
+  },
+  "globalExclusions": {
+    "doNotContactTags": ["do-not-contact", "unsubscribed"],
+    "excludeWeekends": true
+  }
+}
