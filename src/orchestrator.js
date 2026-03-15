@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'fs';
 import config from './config.js';
-import { getContacts, getDataSource } from './jsq/client.js';
+import { getContacts, getDataSource } from './pipedrive/client.js';
 import { batchGetLastEmailDates, createDraft } from './gmail/client.js';
 import { evaluateContacts } from './engine/rules.js';
 import { renderEmail } from './engine/templates.js';
@@ -12,7 +12,7 @@ import { postSummary } from './slack/notifier.js';
  * @param {Object} options
  * @param {boolean} [options.dryRun=false] - If true, skip Gmail draft creation and Slack posting
  * @param {boolean} [options.verbose=false] - If true, log detailed output
- * @returns {Promise<import('./jsq/types.js').RunReport>}
+ * @returns {Promise<import('./pipedrive/types.js').RunReport>}
  */
 export async function runPipeline(options = {}) {
   const { dryRun = false, verbose = false } = options;
@@ -20,7 +20,7 @@ export async function runPipeline(options = {}) {
   const errors = [];
 
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`  JSQ CRM Agent - ${dryRun ? 'DRY RUN' : 'LIVE RUN'}`);
+  console.log(`  Pipedrive CRM Agent - ${dryRun ? 'DRY RUN' : 'LIVE RUN'}`);
   console.log(`  ${new Date().toISOString()}`);
   console.log(`  Data source: ${getDataSource()}`);
   console.log(`${'='.repeat(60)}\n`);
@@ -84,7 +84,7 @@ export async function runPipeline(options = {}) {
 
   // ── Step 4: Render and create drafts ──────────────
   console.log('Step 4/5: Rendering emails and creating drafts...');
-  /** @type {import('./jsq/types.js').DraftResult[]} */
+  /** @type {import('./pipedrive/types.js').DraftResult[]} */
   const drafts = [];
 
   for (const followUp of followUps) {
@@ -165,12 +165,12 @@ export async function runPipeline(options = {}) {
 }
 
 /**
- * @param {import('./jsq/types.js').Contact[]} contacts
- * @param {import('./jsq/types.js').FollowUp[]} followUps
- * @param {import('./jsq/types.js').DraftResult[]} drafts
+ * @param {import('./pipedrive/types.js').Contact[]} contacts
+ * @param {import('./pipedrive/types.js').FollowUp[]} followUps
+ * @param {import('./pipedrive/types.js').DraftResult[]} drafts
  * @param {boolean} dryRun
  * @param {string[]} errors
- * @returns {import('./jsq/types.js').RunReport}
+ * @returns {import('./pipedrive/types.js').RunReport}
  */
 function buildReport(contacts, followUps, drafts, dryRun, errors) {
   return {
@@ -197,7 +197,7 @@ function buildReport(contacts, followUps, drafts, dryRun, errors) {
 
 /**
  * Save a JSON run report to data/runs/.
- * @param {import('./jsq/types.js').RunReport} report
+ * @param {import('./pipedrive/types.js').RunReport} report
  */
 function saveRunReport(report) {
   mkdirSync(config.paths.runsDir, { recursive: true });

@@ -13,7 +13,7 @@ const flags = {
 
 if (flags.help) {
   console.log(`
-JSQ CRM Agent - Automated Investor Follow-Up Pipeline
+Pipedrive CRM Agent - Automated Investor Follow-Up Pipeline
 
 Usage:
   node src/index.js [options]
@@ -26,8 +26,8 @@ Options:
 
 Setup:
   1. Copy .env.example to .env and fill in credentials
-  2. Run 'npm run auth' to complete Gmail OAuth
-  3. Place contacts in data/jsq-export.csv (or configure JSQ API)
+  2. Set PIPEDRIVE_API_TOKEN and PIPEDRIVE_COMPANY_DOMAIN (or use CSV fallback)
+  3. Run 'npm run auth' to complete Gmail OAuth
   4. Run 'npm run dry-run' to preview
   5. Run 'npm start' for scheduled operation
 `);

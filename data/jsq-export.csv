@@ -1,0 +1,11 @@
+id,first_name,last_name,email,company,stage,priority,tags,last_contact_date,notes,meeting_date,pending_documents,last_discussion_point,deadline
+1,Sarah,Chen,sarah.chen@example.com,Meridian Capital,initial_outreach,high,,"2026-03-01",Referred by John at Goldman,,,, 
+2,James,Rodriguez,james.r@example.com,Apex Investments,meeting_scheduled,medium,,"2026-03-04",Interested in our macro strategy,2026-03-15,,,
+3,Priya,Patel,priya.patel@example.com,Horizon Partners,due_diligence,high,,"2026-02-20",Very engaged - asking detailed questions,,Track record report;Audited financials,,
+4,Michael,O'Brien,michael.obrien@example.com,Lakefront Wealth,negotiation,high,,"2026-03-07",Close to commitment - working on allocation size,,,Final terms discussion,2026-03-20
+5,Emily,Watson,emily.w@example.com,Blue Harbor Capital,initial_outreach,low,,"2026-03-08",Met at industry conference,,,,
+6,David,Kim,david.kim@example.com,Pinnacle Group,due_diligence,medium,do-not-contact,"2026-02-25",Requested no further contact,,,,
+7,Rachel,Foster,rachel.foster@example.com,Crestview Family Office,initial_outreach,medium,,"2026-02-28",Cold outreach - no response yet,,,,
+8,Tom,Sanders,tom.sanders@example.com,Atlas Capital,closed,medium,,"2026-03-01",Committed $5M,,,,
+9,Lisa,Chang,lisa.chang@example.com,Evergreen Advisors,negotiation,medium,,"2026-03-03",Reviewing subscription docs,,,Minimum investment size,2026-03-25
+10,Andrew,Blake,andrew.blake@example.com,Summit Wealth,meeting_scheduled,high,,"2026-02-20",Needs to loop in CIO for approval,,,,

@@ -30,7 +30,7 @@ function loadTemplates() {
 /**
  * Render an email from a template using follow-up context.
  *
- * @param {import('../jsq/types.js').FollowUp} followUp
+ * @param {import('../pipedrive/types.js').FollowUp} followUp
  * @returns {Promise<{ subject: string, body: string }>}
  */
 export async function renderEmail(followUp) {
@@ -94,7 +94,7 @@ export async function renderEmail(followUp) {
  *
  * @param {string} subject
  * @param {string} body
- * @param {import('../jsq/types.js').Contact} contact
+ * @param {import('../pipedrive/types.js').Contact} contact
  * @returns {Promise<{ subject: string, body: string }>}
  */
 async function polishWithAI(subject, body, contact) {

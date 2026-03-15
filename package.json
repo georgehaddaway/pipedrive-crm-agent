@@ -1,7 +1,7 @@
 {
-  "name": "jsq-crm-agent",
-  "version": "1.0.0",
-  "description": "Automated pipeline manager syncing Juniper Square CRM with Gmail for investor follow-ups",
+  "name": "pipedrive-crm-agent",
+  "version": "2.0.0",
+  "description": "Automated pipeline manager syncing Pipedrive CRM with Gmail for investor follow-ups",
   "type": "module",
   "engines": {
     "node": ">=20.0.0"
@@ -12,7 +12,7 @@
     "run": "node src/index.js",
     "dry-run": "node src/index.js --dry-run",
     "auth": "node src/gmail/auth.js",
-    "test": "node --test tests/"
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

@@ -1,14 +1,14 @@
 /**
  * @typedef {Object} Contact
- * @property {string} id - Unique identifier
+ * @property {string} id - Unique identifier (Pipedrive person ID)
  * @property {string} firstName
  * @property {string} lastName
  * @property {string} email
  * @property {string} [company] - Organization name
  * @property {string} stage - Pipeline stage key (matches rules.json)
  * @property {string} priority - "high" | "medium" | "low"
- * @property {string[]} [tags] - Labels/tags from CRM
- * @property {string} [lastContactDate] - ISO date of last known contact in CRM
+ * @property {string[]} [tags] - Labels from Pipedrive
+ * @property {string} [lastContactDate] - ISO date of last known activity in CRM
  * @property {string} [notes] - Free-text notes from CRM
  * @property {Object} [meta] - Additional CRM-specific fields
  * @property {string} [meta.meetingDate]
@@ -16,6 +16,8 @@
  * @property {string[]} [meta.pendingDocuments]
  * @property {string} [meta.lastDiscussionPoint]
  * @property {string} [meta.deadline]
+ * @property {number} [meta.dealId] - Pipedrive deal ID used for stage lookup
+ * @property {number} [meta.dealValue] - Deal monetary value
  */
 
 /**

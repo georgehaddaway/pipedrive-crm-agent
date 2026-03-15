@@ -3,9 +3,9 @@ import config from '../config.js';
 /**
  * Evaluate all contacts against follow-up rules and Gmail activity.
  *
- * @param {import('../jsq/types.js').Contact[]} contacts
+ * @param {import('../pipedrive/types.js').Contact[]} contacts
  * @param {Map<string, string|null>} gmailActivity - Map of email -> last email ISO date
- * @returns {import('../jsq/types.js').FollowUp[]}
+ * @returns {import('../pipedrive/types.js').FollowUp[]}
  */
 export function evaluateContacts(contacts, gmailActivity) {
   const { stages, priorityOverrides, globalExclusions } = config.rules;
@@ -49,7 +49,7 @@ export function evaluateContacts(contacts, gmailActivity) {
 
 /**
  * Check if a contact should be excluded from follow-ups.
- * @param {import('../jsq/types.js').Contact} contact
+ * @param {import('../pipedrive/types.js').Contact} contact
  * @param {Object} exclusions
  * @returns {boolean}
  */
@@ -68,11 +68,11 @@ function shouldExclude(contact, exclusions) {
 
 /**
  * Create a FollowUp object from evaluation results.
- * @param {import('../jsq/types.js').Contact} contact
+ * @param {import('../pipedrive/types.js').Contact} contact
  * @param {Object} stageRule
  * @param {number} daysSince
  * @param {Date} now
- * @returns {import('../jsq/types.js').FollowUp}
+ * @returns {import('../pipedrive/types.js').FollowUp}
  */
 function createFollowUp(contact, stageRule, daysSince, now) {
   // Calculate urgency score (0-10)

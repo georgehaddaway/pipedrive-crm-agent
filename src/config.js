@@ -33,15 +33,29 @@ function requireEnv(key, fallback) {
 
 const rules = loadJSON('config/rules.json');
 
+/**
+ * Load optional stage mapping from config/stage-map.json.
+ * Maps Pipedrive stage names to rules.json keys.
+ * @returns {Object|null}
+ */
+function loadStageMap() {
+  try {
+    return loadJSON('config/stage-map.json');
+  } catch {
+    return null;
+  }
+}
+
 const config = {
-  // ── JSQ ──────────────────────────────────────────
-  jsq: {
-    apiBaseUrl: process.env.JSQ_API_BASE_URL || null,
-    apiKey: process.env.JSQ_API_KEY || null,
+  // ── Pipedrive ────────────────────────────────────
+  pipedrive: {
+    apiToken: process.env.PIPEDRIVE_API_TOKEN || null,
+    companyDomain: process.env.PIPEDRIVE_COMPANY_DOMAIN || null,
     get useApi() {
-      return Boolean(this.apiBaseUrl && this.apiKey);
+      return Boolean(this.apiToken && this.companyDomain);
     },
-    csvPath: resolve(ROOT, 'data/jsq-export.csv'),
+    csvPath: resolve(ROOT, 'data/pipedrive-export.csv'),
+    stageMap: loadStageMap(),
   },
 
   // ── Gmail ────────────────────────────────────────
