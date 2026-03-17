@@ -264,10 +264,13 @@ async function fetchContactsFromAPI() {
     }
   }
 
-  // 4. Build contacts
-  return persons.map(person => {
+  // 4. Build contacts - only include persons with an active deal in the pipeline.
+  //    Persons without deals are stored contacts, not active prospects.
+  const personsWithDeals = persons.filter(p => personDealMap.has(p.id));
+
+  return personsWithDeals.map(person => {
     const deal = personDealMap.get(person.id);
-    const stageName = deal ? (stageIdToName.get(deal.stage_id) || 'initial_outreach') : 'initial_outreach';
+    const stageName = stageIdToName.get(deal.stage_id) || 'initial_outreach';
 
     return normalizeContact({
       id: person.id,

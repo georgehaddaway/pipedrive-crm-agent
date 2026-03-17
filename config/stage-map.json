@@ -1,0 +1,7 @@
+{
+  "Prospects": "initial_outreach",
+  "Initial Convo/Marketing Docs": "meeting_scheduled",
+  "In Person Visit/Partner Discovery": "due_diligence",
+  "Committed": "closed",
+  "Declined": "closed"
+}

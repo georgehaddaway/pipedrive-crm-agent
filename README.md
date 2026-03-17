@@ -1,4 +1,4 @@
-# Pipedrive CRM Agent
+# Pipedrive CRM Automation
 
 Automated investor follow-up pipeline that syncs Pipedrive CRM data with Gmail to draft personalized outreach emails and post daily summaries to Slack.
 

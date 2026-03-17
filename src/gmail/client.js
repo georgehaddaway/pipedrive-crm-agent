@@ -132,6 +132,7 @@ export async function createDraft(to, subject, body) {
   const messageParts = [
     `From: ${senderLine}`,
     `To: ${to}`,
+    `Bcc: satoriir@pipedrivemail.com`,
     `Subject: ${subject}`,
     'Content-Type: text/plain; charset=utf-8',
     '',

@@ -4,7 +4,7 @@ import { getContacts, getDataSource } from './pipedrive/client.js';
 import { batchGetLastEmailDates, createDraft } from './gmail/client.js';
 import { evaluateContacts } from './engine/rules.js';
 import { renderEmail } from './engine/templates.js';
-import { postSummary } from './slack/notifier.js';
+import { postSummary, postError } from './slack/notifier.js';
 
 /**
  * Run the full pipeline: fetch contacts, evaluate rules, draft emails, notify Slack.
@@ -160,6 +160,11 @@ export async function runPipeline(options = {}) {
   console.log(`\n${'='.repeat(60)}`);
   console.log(`  Complete in ${elapsed}s. ${errors.length > 0 ? `${errors.length} error(s).` : 'No errors.'}`);
   console.log(`${'='.repeat(60)}\n`);
+
+  // ── Alert on errors ──────────────────────────────
+  if (errors.length > 0 && !dryRun) {
+    await postError('Pipeline Run', errors);
+  }
 
   return report;
 }

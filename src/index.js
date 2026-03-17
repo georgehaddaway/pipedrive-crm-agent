@@ -1,12 +1,11 @@
-import cron from 'node-cron';
 import config from './config.js';
 import { runPipeline } from './orchestrator.js';
+import { postError } from './slack/notifier.js';
 
 // ── Parse CLI flags ─────────────────────────────────
 const args = process.argv.slice(2);
 const flags = {
   dryRun: args.includes('--dry-run'),
-  schedule: args.includes('--schedule'),
   verbose: args.includes('--verbose') || args.includes('-v'),
   help: args.includes('--help') || args.includes('-h'),
 };
@@ -20,45 +19,36 @@ Usage:
 
 Options:
   --dry-run     Preview follow-ups and email drafts without creating Gmail drafts or posting to Slack
-  --schedule    Run on a cron schedule (default: ${config.cron})
   --verbose     Show detailed output including email previews
   --help        Show this help message
+
+Scheduling:
+  The agent runs once and exits. Use macOS launchd for recurring runs:
+    bash scripts/launchd-setup.sh install     Install scheduled agent
+    bash scripts/launchd-setup.sh uninstall   Remove scheduled agent
+    bash scripts/launchd-setup.sh status      Check schedule status
 
 Setup:
   1. Copy .env.example to .env and fill in credentials
   2. Set PIPEDRIVE_API_TOKEN and PIPEDRIVE_COMPANY_DOMAIN (or use CSV fallback)
   3. Run 'npm run auth' to complete Gmail OAuth
   4. Run 'npm run dry-run' to preview
-  5. Run 'npm start' for scheduled operation
+  5. Run 'npm run setup-schedule' to install the macOS Launch Agent
 `);
   process.exit(0);
 }
 
 // ── Run ─────────────────────────────────────────────
 async function main() {
-  if (flags.schedule) {
-    console.log(`Starting scheduled mode: "${config.cron}"`);
-    console.log('Press Ctrl+C to stop.\n');
+  const report = await runPipeline({ dryRun: flags.dryRun, verbose: flags.verbose });
 
-    // Run once immediately on start
-    await runPipeline({ dryRun: flags.dryRun, verbose: flags.verbose });
-
-    // Then schedule
-    cron.schedule(config.cron, async () => {
-      console.log(`\n[${new Date().toISOString()}] Scheduled run triggered.`);
-      await runPipeline({ dryRun: flags.dryRun, verbose: flags.verbose });
-    });
-  } else {
-    // Single run
-    const report = await runPipeline({ dryRun: flags.dryRun, verbose: flags.verbose });
-
-    if (report.errors.length > 0) {
-      process.exit(1);
-    }
+  if (report.errors.length > 0) {
+    process.exit(1);
   }
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error('Fatal error:', err);
+  await postError('Fatal Crash', [err.message || String(err)]);
   process.exit(1);
 });

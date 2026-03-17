@@ -2,6 +2,7 @@ node_modules/
 .env
 data/gmail-token.json
 data/runs/
+data/logs/
 data/pipedrive-export.csv
 *.log
 
