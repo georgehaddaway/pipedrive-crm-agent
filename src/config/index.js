@@ -53,6 +53,13 @@ try {
   pipedriveFields = { person_fields: {}, deal_fields: {}, api: { rate_limit: {} } };
 }
 
+let voiceProfile;
+try {
+  voiceProfile = loadJSON('config/voice-profile.json');
+} catch {
+  voiceProfile = null;
+}
+
 // ── Stage Helpers ────────────────────────────────────
 
 /** @type {Map<string, Object>} stage key -> full stage config object */
@@ -226,6 +233,7 @@ const config = {
   rules: followUpRules,
   templateMapping,
   pipedriveFields,
+  voiceProfile,
 
   // ── Stage Helpers ────────────────────────────────
   getStageByKey,

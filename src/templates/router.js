@@ -176,13 +176,36 @@ async function polishWithAI(subject, body, contact, aiInstructions) {
       ? `\nStage-specific tone guidance: ${aiInstructions}`
       : '';
 
+    // Build voice profile instructions if available
+    let voiceInstructions = '';
+    if (config.voiceProfile) {
+      const vp = config.voiceProfile;
+      const stageVoice = vp.stage_voice_notes?.[contact.stage] || '';
+
+      voiceInstructions = `
+VOICE PROFILE — You must write in this person's exact voice:
+- Tone: ${vp.tone.overall}
+- Register: ${vp.tone.register}
+- Structure: ${vp.structure_patterns.greeting} ${vp.structure_patterns.body}
+- Ask style: ${vp.structure_patterns.ask}
+- Closing: ${vp.structure_patterns.closing}
+- Max length: ${vp.structure_patterns.length}
+
+DO: ${vp.do.join('. ')}
+DON'T: ${vp.dont.join('. ')}
+
+Data points to weave in naturally (use 1-2, not all): ${vp.data_points_to_include.join('; ')}
+${stageVoice ? `\nVoice for ${contact.stage} stage: ${stageVoice}` : ''}`;
+    }
+
     const response = await anthropicClient.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
       messages: [
         {
           role: 'user',
-          content: `You are an email writing assistant for a fund distribution professional. Lightly personalize this email draft to feel more natural and human while keeping the same structure, tone, and intent. Do NOT change the core ask or add information not present. Keep it professional and concise.
+          content: `You are rewriting an email draft to match a specific person's writing voice. ${voiceInstructions ? 'Follow the voice profile exactly.' : 'Keep the tone professional and concise.'}
+${voiceInstructions}
 ${stageInstructions}
 
 Contact info:
@@ -195,6 +218,8 @@ Contact info:
 Current draft subject: ${subject}
 Current draft body:
 ${body}
+
+Rewrite this email to match the voice profile. Keep the same intent and core information. Do NOT add facts not present in the draft. Do NOT change the sign-off.
 
 Return your response in this exact format:
 SUBJECT: <improved subject line>
@@ -222,3 +247,4 @@ BODY:
     return { subject, body };
   }
 }
+

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 process.env.SENDER_NAME = 'Test Sender';
 process.env.SENDER_EMAIL = 'test@example.com';
 process.env.FUND_NAME = 'Apex Growth Fund';
+process.env.ANTHROPIC_API_KEY = '';
 
 const { renderEmail } = await import('../src/templates/router.js');
 
