@@ -1,0 +1,19 @@
+{
+  "pipeline_id": 2,
+  "pipeline_name": "Business Development",
+  "stages": {
+    "initial_outreach": 159,
+    "follow_up": 160,
+    "breakup": 161,
+    "engaged": 162,
+    "post_meeting": 163,
+    "due_diligence": 164,
+    "committed": 165,
+    "on_hold": 166,
+    "declined_cold": 167
+  },
+  "stage_name_overrides": {
+    "164": "Due Dilligence"
+  },
+  "_comment": "stage_name_overrides documents known name mismatches between config and Pipedrive. The agent normalizes these during stage resolution."
+}

@@ -1,0 +1,86 @@
+{
+  "api": {
+    "base_url_template": "https://{company_domain}.pipedrive.com/api/v2",
+    "rate_limit": {
+      "requests_per_second": 10,
+      "daily_limit": 40000,
+      "retry_on_429": true,
+      "retry_delay_ms": 2000,
+      "max_retries": 3
+    }
+  },
+  "person_fields": {
+    "lead_source": {
+      "name": "Lead Source",
+      "field_type": "enum",
+      "required": false,
+      "options": ["warm_intro", "mutual_connection", "conference_meeting", "conference_lead", "inbound_inquiry", "cold_email", "distribution_list"],
+      "description": "How the contact entered the pipeline. Used for urgency scoring."
+    },
+    "introducer_person_id": {
+      "name": "Introducer",
+      "field_type": "person",
+      "required": false,
+      "description": "Person who made the introduction. Used for introducer re-engagement flags."
+    },
+    "last_outbound_date": {
+      "name": "Last Outbound Date",
+      "field_type": "date",
+      "required": false,
+      "description": "Date of most recent outbound email. Updated by agent after draft creation."
+    },
+    "last_inbound_date": {
+      "name": "Last Inbound Date",
+      "field_type": "date",
+      "required": false,
+      "description": "Date of most recent inbound reply. Updated by agent on reply detection."
+    },
+    "outreach_attempts": {
+      "name": "Outreach Attempts",
+      "field_type": "double",
+      "required": false,
+      "description": "Count of outreach attempts in current stage. Reset to 0 on stage advancement."
+    },
+    "agent_tags": {
+      "name": "Agent Tags",
+      "field_type": "set",
+      "required": false,
+      "description": "Tags managed by the agent (do-not-contact, paused, etc)."
+    },
+    "investor_type": {
+      "name": "Investor Type",
+      "field_type": "enum",
+      "required": false,
+      "options": ["family_office", "fund_of_funds", "endowment", "pension", "hnwi", "ria", "institutional", "other"],
+      "description": "Classification of investor for template personalization."
+    }
+  },
+  "deal_fields": {
+    "data_room_access": {
+      "name": "Data Room Access",
+      "field_type": "enum",
+      "required": false,
+      "options": ["not_requested", "requested", "granted", "reviewing"],
+      "description": "Status of data room access. Used for DD-stage template routing."
+    },
+    "paul_meeting_date": {
+      "name": "Paul Meeting Date",
+      "field_type": "date",
+      "required": false,
+      "description": "Date of meeting with Paul. Used for post-meeting follow-up timing."
+    },
+    "decline_reason": {
+      "name": "Decline Reason",
+      "field_type": "enum",
+      "required": false,
+      "options": ["timing", "strategy_fit", "track_record", "minimum", "internal_policy", "no_response", "other"],
+      "description": "Reason for declining. Captured for analytics."
+    },
+    "estimated_aum": {
+      "name": "Estimated AUM",
+      "field_type": "monetary",
+      "required": false,
+      "description": "Estimated assets under management for the investor."
+    }
+  }
+}

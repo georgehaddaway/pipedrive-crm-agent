@@ -1,0 +1,84 @@
+{
+  "template_dir": "src/templates/emails",
+  "default_ai_polish": true,
+  "stages": {
+    "initial_outreach": {
+      "selection": "by_lead_source",
+      "templates": {
+        "warm_intro": "initial-warm-intro.hbs",
+        "mutual_connection": "initial-warm-intro.hbs",
+        "conference_meeting": "initial-conference.hbs",
+        "conference_lead": "initial-conference.hbs",
+        "inbound_inquiry": "initial-warm-intro.hbs",
+        "default": "initial-cold.hbs"
+      },
+      "ai_polish": true,
+      "ai_instructions": "Keep it brief and personal. Reference the specific connection point if available. No hard sell. Tone: warm, direct, professional."
+    },
+    "follow_up": {
+      "selection": "by_attempt_number",
+      "templates": {
+        "1": "followup-performance-hook.hbs",
+        "2": "followup-comparison-hook.hbs",
+        "default": "followup-general.hbs"
+      },
+      "ai_polish": true,
+      "ai_instructions": "Short and punchy. Lead with the data point. One clear CTA. No repeating the initial outreach pitch."
+    },
+    "breakup": {
+      "selection": "single",
+      "templates": {
+        "default": "breakup.hbs"
+      },
+      "ai_polish": false,
+      "ai_instructions": null
+    },
+    "engaged": {
+      "selection": "by_deal_context",
+      "templates": {
+        "schedule_paul_call": "engaged-schedule-paul.hbs",
+        "materials_followup": "engaged-materials-followup.hbs",
+        "default": "engaged-nudge.hbs"
+      },
+      "ai_polish": true,
+      "ai_instructions": "Conversational and helpful. Reference their specific interest or question if available. Goal: get them on a call with Paul."
+    },
+    "post_meeting": {
+      "selection": "by_attempt_number",
+      "templates": {
+        "1": "post-meeting-feedback.hbs",
+        "default": "post-meeting-concerns.hbs"
+      },
+      "ai_polish": true,
+      "ai_instructions": "Direct and candid. Ask for honest feedback. Proactively address the most common objections. Tone: confident but not pushy."
+    },
+    "due_diligence": {
+      "selection": "by_data_room_access",
+      "templates": {
+        "not_requested": "dd-data-room.hbs",
+        "requested": "dd-data-room.hbs",
+        "granted": "dd-clarify.hbs",
+        "reviewing": "dd-clarify.hbs",
+        "default": "dd-data-room.hbs"
+      },
+      "ai_polish": true,
+      "ai_instructions": "Supportive and proactive. Offer to clarify specifics. Show awareness that DD is a thorough process. Tone: patient, detail-oriented."
+    },
+    "on_hold": {
+      "selection": "single",
+      "templates": {
+        "default": "on-hold-quarterly.hbs"
+      },
+      "ai_polish": true,
+      "ai_instructions": "Substantive update only. Lead with something concrete — new performance data, a milestone, or market-relevant insight. Never a naked check-in. Tone: informative, low-pressure."
+    },
+    "declined_cold": {
+      "selection": "single",
+      "templates": {
+        "default": "declined-cold-annual.hbs"
+      },
+      "ai_polish": true,
+      "ai_instructions": "Very light touch. Lead with a compelling reason to reconnect — major milestone, new fund, or significant performance. Tone: respectful, no pressure, acknowledging they passed previously."
+    }
+  }
+}

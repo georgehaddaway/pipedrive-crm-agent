@@ -1,0 +1,97 @@
+{
+  "rules_engine": {
+    "version": "1.0.0",
+    "evaluation_order": [
+      "check_exclusions",
+      "check_overdue",
+      "calculate_urgency",
+      "apply_priority_multipliers",
+      "rank_and_cap"
+    ]
+  },
+  "global_defaults": {
+    "business_days_only": true,
+    "timezone": "America/New_York",
+    "max_drafts_per_run": 15,
+    "min_urgency_to_draft": 0.3,
+    "stale_contact_days": 180,
+    "stale_contact_action": "flag_for_review"
+  },
+  "exclusions": {
+    "tags": ["do-not-contact", "legal-hold", "unsubscribed", "paused"],
+    "stages": ["committed"],
+    "conditions": [
+      { "field": "email_bounced", "operator": "eq", "value": true, "action": "skip" },
+      { "field": "days_since_last_outbound", "operator": "lt", "value": 1, "action": "skip", "reason": "Already contacted today" }
+    ]
+  },
+  "overdue_thresholds": {
+    "initial_outreach": 4,
+    "follow_up": 5,
+    "breakup": 7,
+    "engaged": 5,
+    "post_meeting": 3,
+    "due_diligence": 2,
+    "on_hold": 90,
+    "declined_cold": 365
+  },
+  "urgency_scoring": {
+    "formula": "base_urgency * source_multiplier * recency_decay * stage_weight",
+    "base_urgency": { "method": "days_overdue / threshold_days", "cap": 1.0 },
+    "source_multipliers": {
+      "warm_intro": 1.5,
+      "mutual_connection": 1.4,
+      "conference_meeting": 1.2,
+      "conference_lead": 1.1,
+      "inbound_inquiry": 1.3,
+      "cold_email": 0.7,
+      "distribution_list": 0.5
+    },
+    "stage_weights": {
+      "initial_outreach": 0.5,
+      "follow_up": 0.6,
+      "breakup": 0.7,
+      "engaged": 0.9,
+      "post_meeting": 1.0,
+      "due_diligence": 1.0,
+      "on_hold": 0.3,
+      "declined_cold": 0.1
+    },
+    "recency_decay": { "enabled": true, "half_life_days": 30, "floor": 0.1 }
+  },
+  "attempt_limits": {
+    "initial_outreach": 1,
+    "follow_up": 2,
+    "breakup": 1,
+    "engaged": 4,
+    "post_meeting": 3,
+    "due_diligence": 6,
+    "on_hold": null,
+    "declined_cold": 1
+  },
+  "introducer_tracking": {
+    "enabled": true,
+    "pipedrive_field": "introducer_person_id",
+    "re_engage_introducer_after_silent_days": 21,
+    "re_engage_stage_whitelist": ["engaged", "post_meeting", "due_diligence"],
+    "flag_action": "add_to_summary",
+    "summary_label": "Consider re-engaging introducer"
+  },
+  "auto_stage_advancement": {
+    "enabled": true,
+    "rules": [
+      { "trigger": "no_reply_after_max_attempts", "from": "initial_outreach", "to": "follow_up", "action": "advance_stage" },
+      { "trigger": "no_reply_after_max_attempts", "from": "follow_up", "to": "breakup", "action": "advance_stage" },
+      { "trigger": "no_reply_after_max_attempts", "from": "breakup", "to": "declined_cold", "action": "advance_stage" },
+      { "trigger": "reply_detected", "from": ["initial_outreach", "follow_up", "breakup", "on_hold"], "to": "engaged", "action": "advance_stage" }
+    ]
+  },
+  "daily_summary_flags": {
+    "flags": [
+      { "id": "introducer_nudge", "label": "Introducer re-engagement suggested", "condition": "contact silent > 21 days in engaged/post_meeting/due_diligence AND introducer_person_id exists" },
+      { "id": "stale_contact", "label": "Contact may be stale — review needed", "condition": "no stage movement in 180+ days AND stage is active" },
+      { "id": "breakup_pending", "label": "Breakup email queued", "condition": "stage = follow_up AND attempts >= max_attempts" },
+      { "id": "hot_lead", "label": "High-priority — due diligence active", "condition": "stage = due_diligence AND days_since_last_activity < 7" }
+    ]
+  }
+}

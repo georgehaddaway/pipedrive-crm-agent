@@ -1,18 +1,21 @@
 import { mkdirSync, writeFileSync } from 'fs';
-import config from './config.js';
-import { getContacts, getDataSource } from './pipedrive/client.js';
+import config from './config/index.js';
+import { getContacts, getDataSource, pipedriveWriter } from './api/pipedrive.js';
 import { batchGetLastEmailDates, createDraft } from './gmail/client.js';
-import { evaluateContacts } from './engine/rules.js';
-import { renderEmail } from './engine/templates.js';
-import { postSummary, postError } from './slack/notifier.js';
+import { evaluateContacts, detectStaleContacts } from './rules/engine.js';
+import { evaluateAdvancements, applyAdvancement, detectBreakupPending, detectHotLeads } from './rules/advancement.js';
+import { evaluateIntroducerNudges } from './rules/introducer.js';
+import { renderEmail } from './templates/router.js';
+import { postSummary, postError } from './summary/builder.js';
 
 /**
- * Run the full pipeline: fetch contacts, evaluate rules, draft emails, notify Slack.
+ * Run the full pipeline: fetch contacts, evaluate rules, advance stages,
+ * draft emails, collect flags, notify Slack.
  *
  * @param {Object} options
- * @param {boolean} [options.dryRun=false] - If true, skip Gmail draft creation and Slack posting
+ * @param {boolean} [options.dryRun=false] - If true, skip Gmail draft creation, Slack posting, and stage writes
  * @param {boolean} [options.verbose=false] - If true, log detailed output
- * @returns {Promise<import('./pipedrive/types.js').RunReport>}
+ * @returns {Promise<Object>} RunReport
  */
 export async function runPipeline(options = {}) {
   const { dryRun = false, verbose = false } = options;
@@ -23,10 +26,11 @@ export async function runPipeline(options = {}) {
   console.log(`  Pipedrive CRM Agent - ${dryRun ? 'DRY RUN' : 'LIVE RUN'}`);
   console.log(`  ${new Date().toISOString()}`);
   console.log(`  Data source: ${getDataSource()}`);
+  console.log(`  Pipeline: ${config.pipeline.pipeline.name} (ID: ${config.pipedrive.pipelineId})`);
   console.log(`${'='.repeat(60)}\n`);
 
   // ── Step 1: Fetch contacts ────────────────────────
-  console.log('Step 1/5: Fetching contacts...');
+  console.log('Step 1/7: Fetching contacts...');
   let contacts;
   try {
     contacts = await getContacts();
@@ -34,16 +38,16 @@ export async function runPipeline(options = {}) {
   } catch (err) {
     console.error(`  Failed to fetch contacts: ${err.message}`);
     errors.push(`Contact fetch failed: ${err.message}`);
-    return buildReport([], [], [], dryRun, errors);
+    return buildReport([], [], [], [], [], dryRun, errors);
   }
 
   if (contacts.length === 0) {
     console.log('  No contacts found. Nothing to do.');
-    return buildReport(contacts, [], [], dryRun, errors);
+    return buildReport(contacts, [], [], [], [], dryRun, errors);
   }
 
   // ── Step 2: Check Gmail activity ──────────────────
-  console.log('Step 2/5: Checking Gmail activity...');
+  console.log('Step 2/7: Checking Gmail activity...');
   let gmailActivity = new Map();
 
   if (!dryRun && config.gmail.clientId) {
@@ -64,27 +68,40 @@ export async function runPipeline(options = {}) {
   }
 
   // ── Step 3: Evaluate follow-up rules ──────────────
-  console.log('Step 3/5: Evaluating follow-up rules...');
+  console.log('Step 3/7: Evaluating follow-up rules...');
   const followUps = evaluateContacts(contacts, gmailActivity);
-  console.log(`  ${followUps.length} contacts need follow-up.`);
+  console.log(`  ${followUps.length} contacts need follow-up (max ${config.rules.global_defaults.max_drafts_per_run} per run).`);
 
   if (verbose && followUps.length > 0) {
     console.log('\n  Follow-ups:');
     for (const fu of followUps) {
-      console.log(`    [${fu.urgencyScore}/10] ${fu.contact.firstName} ${fu.contact.lastName} (${fu.contact.email})`);
+      console.log(`    [${fu.urgencyScore.toFixed(2)}] ${fu.contact.firstName} ${fu.contact.lastName} (${fu.contact.email})`);
       console.log(`           ${fu.reason}`);
     }
     console.log('');
   }
 
-  if (followUps.length === 0) {
-    console.log('  No follow-ups needed. Pipeline is clean.');
-    return buildReport(contacts, followUps, [], dryRun, errors);
+  // ── Step 4: Evaluate stage advancements ───────────
+  console.log('Step 4/7: Evaluating stage advancements...');
+  const pendingAdvancements = evaluateAdvancements(contacts, gmailActivity);
+  console.log(`  ${pendingAdvancements.length} stage advancement(s) identified.`);
+
+  const appliedAdvancements = [];
+  if (!dryRun && pendingAdvancements.length > 0) {
+    for (const advancement of pendingAdvancements) {
+      const success = await applyAdvancement(advancement, pipedriveWriter);
+      if (success) appliedAdvancements.push(advancement);
+    }
+    console.log(`  Applied ${appliedAdvancements.length}/${pendingAdvancements.length} advancement(s).`);
+  } else if (dryRun && pendingAdvancements.length > 0) {
+    console.log('  [DRY RUN] Would advance:');
+    for (const a of pendingAdvancements) {
+      console.log(`    ${a.contact.firstName} ${a.contact.lastName}: ${a.fromStage} → ${a.toStage} (${a.trigger})`);
+    }
   }
 
-  // ── Step 4: Render and create drafts ──────────────
-  console.log('Step 4/5: Rendering emails and creating drafts...');
-  /** @type {import('./pipedrive/types.js').DraftResult[]} */
+  // ── Step 5: Render and create drafts ──────────────
+  console.log('Step 5/7: Rendering emails and creating drafts...');
   const drafts = [];
 
   for (const followUp of followUps) {
@@ -110,6 +127,15 @@ export async function runPipeline(options = {}) {
           draftId = await createDraft(contact.email, subject, body);
           created = true;
           console.log(`  Draft created for ${contact.email} (ID: ${draftId})`);
+
+          // Auto-increment outreach attempts and update last outbound date
+          if (contact.id && config.pipedrive.useApi) {
+            const newAttempts = (contact.outreachAttempts || 0) + 1;
+            const today = new Date().toISOString().split('T')[0];
+            await pipedriveWriter.updatePersonField(contact.id, 'Outreach Attempts', newAttempts);
+            await pipedriveWriter.updatePersonField(contact.id, 'Last Outbound Date', today);
+            console.log(`  Outreach attempts: ${newAttempts}, last outbound: ${today}`);
+          }
         } catch (err) {
           console.error(`  Failed to create draft for ${contact.email}: ${err.message}`);
           errors.push(`Draft failed for ${contact.email}: ${err.message}`);
@@ -135,11 +161,27 @@ export async function runPipeline(options = {}) {
   const createdCount = drafts.filter(d => d.created).length;
   console.log(`\n  ${dryRun ? 'Would create' : 'Created'} ${dryRun ? drafts.length : createdCount} drafts.`);
 
-  // ── Step 5: Slack summary ─────────────────────────
-  console.log('Step 5/5: Posting Slack summary...');
+  // ── Step 6: Collect flags ─────────────────────────
+  console.log('Step 6/7: Collecting flags...');
+  const allFlags = [
+    ...evaluateIntroducerNudges(contacts, gmailActivity),
+    ...detectStaleContacts(contacts),
+    ...detectBreakupPending(contacts),
+    ...detectHotLeads(contacts),
+  ];
+  console.log(`  ${allFlags.length} flag(s) generated.`);
+
+  if (verbose && allFlags.length > 0) {
+    for (const f of allFlags) {
+      console.log(`    [${f.flag.id}] ${f.flag.detail}`);
+    }
+  }
+
+  // ── Step 7: Slack summary ─────────────────────────
+  console.log('Step 7/7: Posting Slack summary...');
   if (!dryRun) {
     try {
-      await postSummary(followUps, drafts, dryRun);
+      await postSummary(followUps, drafts, allFlags, appliedAdvancements, dryRun);
     } catch (err) {
       console.warn(`  Slack post failed: ${err.message}`);
       errors.push(`Slack post failed: ${err.message}`);
@@ -149,7 +191,7 @@ export async function runPipeline(options = {}) {
   }
 
   // ── Save run report ───────────────────────────────
-  const report = buildReport(contacts, followUps, drafts, dryRun, errors);
+  const report = buildReport(contacts, followUps, drafts, allFlags, appliedAdvancements, dryRun, errors);
   try {
     saveRunReport(report);
   } catch (err) {
@@ -161,7 +203,7 @@ export async function runPipeline(options = {}) {
   console.log(`  Complete in ${elapsed}s. ${errors.length > 0 ? `${errors.length} error(s).` : 'No errors.'}`);
   console.log(`${'='.repeat(60)}\n`);
 
-  // ── Alert on errors ──────────────────────────────
+  // Alert on errors
   if (errors.length > 0 && !dryRun) {
     await postError('Pipeline Run', errors);
   }
@@ -170,19 +212,16 @@ export async function runPipeline(options = {}) {
 }
 
 /**
- * @param {import('./pipedrive/types.js').Contact[]} contacts
- * @param {import('./pipedrive/types.js').FollowUp[]} followUps
- * @param {import('./pipedrive/types.js').DraftResult[]} drafts
- * @param {boolean} dryRun
- * @param {string[]} errors
- * @returns {import('./pipedrive/types.js').RunReport}
+ * Build a structured run report.
  */
-function buildReport(contacts, followUps, drafts, dryRun, errors) {
+function buildReport(contacts, followUps, drafts, flags, advancements, dryRun, errors) {
   return {
     timestamp: new Date().toISOString(),
     totalContacts: contacts.length,
     followUpsIdentified: followUps.length,
     draftsCreated: drafts.filter(d => d.created).length,
+    stageAdvancements: advancements.length,
+    flagsGenerated: flags.length,
     followUps: followUps.map(fu => ({
       ...fu,
       contact: {
@@ -192,9 +231,22 @@ function buildReport(contacts, followUps, drafts, dryRun, errors) {
         email: fu.contact.email,
         stage: fu.contact.stage,
         priority: fu.contact.priority,
+        leadSource: fu.contact.leadSource,
       },
+      stageConfig: undefined, // Don't serialize full config
     })),
     drafts,
+    flags: flags.map(f => ({
+      contactEmail: f.contact.email,
+      contactName: `${f.contact.firstName} ${f.contact.lastName}`,
+      ...f.flag,
+    })),
+    advancements: advancements.map(a => ({
+      contactEmail: a.contact.email,
+      fromStage: a.fromStage,
+      toStage: a.toStage,
+      trigger: a.trigger,
+    })),
     dryRun,
     errors,
   };
@@ -202,7 +254,6 @@ function buildReport(contacts, followUps, drafts, dryRun, errors) {
 
 /**
  * Save a JSON run report to data/runs/.
- * @param {import('./pipedrive/types.js').RunReport} report
  */
 function saveRunReport(report) {
   mkdirSync(config.paths.runsDir, { recursive: true });

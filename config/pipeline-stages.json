@@ -1,0 +1,179 @@
+{
+  "pipeline": {
+    "name": "Business Development",
+    "pipedrive_id": 2,
+    "currency": "USD",
+    "description": "Fund distribution pipeline tracking investor contacts from first touch through commitment or decline."
+  },
+  "stages": [
+    {
+      "key": "initial_outreach",
+      "name": "Initial Outreach",
+      "order": 1,
+      "type": "active",
+      "deal_probability": 5,
+      "description": "First touch — warm intro, conference follow-up, or cold email from distribution list.",
+      "follow_up": {
+        "threshold_days": 4,
+        "max_attempts": 1,
+        "cadence": "one-time",
+        "notes": "Single outreach. If no response, auto-advance to Follow-Up stage after threshold."
+      },
+      "auto_advance": {
+        "on_no_reply": "follow_up",
+        "on_reply": "engaged"
+      }
+    },
+    {
+      "key": "follow_up",
+      "name": "Follow-Up",
+      "order": 2,
+      "type": "active",
+      "deal_probability": 3,
+      "description": "1-2 additional emails if no response. Each adds one new hook (performance data, comparison, etc).",
+      "follow_up": {
+        "threshold_days": 5,
+        "max_attempts": 2,
+        "cadence": "sequential",
+        "notes": "Short, punchy emails with one new data point each. After max_attempts exhausted, advance to Breakup."
+      },
+      "auto_advance": {
+        "on_no_reply": "breakup",
+        "on_reply": "engaged"
+      }
+    },
+    {
+      "key": "breakup",
+      "name": "Breakup",
+      "order": 3,
+      "type": "active",
+      "deal_probability": 2,
+      "description": "Permission-to-close email. Final direct outreach before marking inactive.",
+      "follow_up": {
+        "threshold_days": 7,
+        "max_attempts": 1,
+        "cadence": "one-time",
+        "notes": "Tone: respectful close. These often get the fastest responses."
+      },
+      "auto_advance": {
+        "on_no_reply": "declined_cold",
+        "on_reply": "engaged"
+      }
+    },
+    {
+      "key": "engaged",
+      "name": "Engaged",
+      "order": 4,
+      "type": "active",
+      "deal_probability": 20,
+      "description": "Contact has responded, had a call, or requested materials. Goal: schedule a call with Paul.",
+      "follow_up": {
+        "threshold_days": 5,
+        "max_attempts": 4,
+        "cadence": "adaptive",
+        "notes": "Responsive contacts get more patience. Nudge toward scheduling a Paul call. If they go silent for 3+ weeks, consider re-engagement via introducer."
+      },
+      "auto_advance": {
+        "on_no_reply": null,
+        "on_reply": null,
+        "manual_advance_to": ["post_meeting", "on_hold"]
+      }
+    },
+    {
+      "key": "post_meeting",
+      "name": "Post-Meeting",
+      "order": 5,
+      "type": "active",
+      "deal_probability": 40,
+      "description": "Contact has spoken with Paul. Follow-up focuses on candid feedback and addressing concerns.",
+      "follow_up": {
+        "threshold_days": 3,
+        "max_attempts": 3,
+        "cadence": "front-loaded",
+        "notes": "First follow-up within 48 hours of meeting. Ask for candid feedback and proactively address likely concerns."
+      },
+      "auto_advance": {
+        "on_no_reply": null,
+        "on_reply": null,
+        "manual_advance_to": ["due_diligence", "on_hold"]
+      }
+    },
+    {
+      "key": "due_diligence",
+      "name": "Due Diligence",
+      "order": 6,
+      "type": "active",
+      "deal_probability": 70,
+      "description": "Contact has requested data room access or is actively reviewing materials. Real momentum.",
+      "follow_up": {
+        "threshold_days": 2,
+        "max_attempts": 6,
+        "cadence": "tight",
+        "notes": "Tighter cadence — these have real momentum. Proactively offer to clarify anything in the data room. Weekly check-in minimum."
+      },
+      "auto_advance": {
+        "on_no_reply": null,
+        "on_reply": null,
+        "manual_advance_to": ["committed", "on_hold"]
+      }
+    },
+    {
+      "key": "committed",
+      "name": "Committed",
+      "order": 7,
+      "type": "won",
+      "deal_probability": 100,
+      "description": "Invested or given verbal commitment.",
+      "follow_up": {
+        "threshold_days": null,
+        "max_attempts": 0,
+        "cadence": "none",
+        "notes": "No automated follow-up. Relationship management handled outside pipeline."
+      },
+      "auto_advance": null
+    },
+    {
+      "key": "on_hold",
+      "name": "On Hold",
+      "order": 8,
+      "type": "on_hold",
+      "deal_probability": 10,
+      "description": "Passed but left the door open. Stay on distribution list, re-engage quarterly.",
+      "follow_up": {
+        "threshold_days": 90,
+        "max_attempts": null,
+        "cadence": "quarterly",
+        "notes": "Touch base quarterly with something substantive — new performance data, milestone, or market-relevant update. Never a naked check-in."
+      },
+      "auto_advance": {
+        "on_reply": "engaged"
+      }
+    },
+    {
+      "key": "declined_cold",
+      "name": "Declined (Cold)",
+      "order": 9,
+      "type": "lost_cold",
+      "deal_probability": 0,
+      "description": "No response after breakup email, or clear 'not interested.' Remove from active pipeline.",
+      "follow_up": {
+        "threshold_days": 365,
+        "max_attempts": 1,
+        "cadence": "annual",
+        "notes": "Annual check-in at most. Only re-engage with a compelling reason."
+      },
+      "auto_advance": null
+    }
+  ],
+  "stage_key_map": {
+    "initial_outreach": 1,
+    "follow_up": 2,
+    "breakup": 3,
+    "engaged": 4,
+    "post_meeting": 5,
+    "due_diligence": 6,
+    "committed": 7,
+    "on_hold": 8,
+    "declined_cold": 9
+  }
+}

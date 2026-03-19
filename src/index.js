@@ -1,6 +1,6 @@
-import config from './config.js';
+import config from './config/index.js';
 import { runPipeline } from './orchestrator.js';
-import { postError } from './slack/notifier.js';
+import { postError } from './summary/builder.js';
 
 // ── Parse CLI flags ─────────────────────────────────
 const args = process.argv.slice(2);

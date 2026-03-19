@@ -1,0 +1,17 @@
+Subject: {{fundName}} — Anything I Can Clarify?
+
+Hi {{firstName}},
+
+I wanted to check in on your review of {{fundName}}. I know the due diligence process is thorough, and I want to make sure you have everything you need.
+
+{{#if pendingDocuments}}I noticed we still have a few outstanding items:
+
+{{#each pendingDocuments}}- {{this}}
+{{/each}}
+
+I'm happy to expedite any of these.{{else}}If there's anything in the data room that needs clarification, or additional materials your team is looking for, just let me know — happy to provide whatever would be helpful.{{/if}}
+
+I'm available anytime to walk through specifics or answer questions from {{#if company}}the {{company}} team{{else}}your team{{/if}}.
+
+Best,
+{{senderName}}

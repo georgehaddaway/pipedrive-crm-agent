@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import { writeFileSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 import { createOAuth2Client } from './client.js';
-import config from '../config.js';
+import config from '../config/index.js';
 
 const SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',

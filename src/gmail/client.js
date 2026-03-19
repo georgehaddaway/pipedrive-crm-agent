@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import config from '../config.js';
+import config from '../config/index.js';
 
 /** @type {import('googleapis').gmail_v1.Gmail | null} */
 let gmailClient = null;

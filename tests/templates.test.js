@@ -5,12 +5,11 @@ process.env.SENDER_NAME = 'Test Sender';
 process.env.SENDER_EMAIL = 'test@example.com';
 process.env.FUND_NAME = 'Apex Growth Fund';
 
-const { renderEmail } = await import('../src/engine/templates.js');
+const { renderEmail } = await import('../src/templates/router.js');
 
-describe('Template Engine', () => {
-  it('renders initial_outreach template with all fields', async () => {
+describe('Template Router', () => {
+  it('renders initial-cold template by default', async () => {
     const followUp = makeFollowUp({
-      templateName: 'initial_outreach',
       contact: {
         firstName: 'Sarah',
         lastName: 'Chen',
@@ -21,77 +20,149 @@ describe('Template Engine', () => {
     });
 
     const { subject, body } = await renderEmail(followUp);
-    assert.ok(subject.includes('Apex Growth Fund'));
+    assert.ok(subject, 'Subject should not be empty');
     assert.ok(body.includes('Sarah'));
-    assert.ok(body.includes('Meridian Capital'));
     assert.ok(body.includes('Test Sender'));
   });
 
-  it('renders meeting_followup template with meeting date', async () => {
+  it('renders initial-warm-intro when lead source is warm_intro', async () => {
     const followUp = makeFollowUp({
-      templateName: 'meeting_followup',
       contact: {
         firstName: 'James',
         lastName: 'R',
         email: 'james@test.com',
-        stage: 'meeting_scheduled',
-        meta: { meetingDate: 'March 15, 2026' },
+        stage: 'initial_outreach',
+        leadSource: 'warm_intro',
       },
     });
 
     const { body } = await renderEmail(followUp);
     assert.ok(body.includes('James'));
-    assert.ok(body.includes('March 15, 2026'));
+    assert.ok(body.includes('mutual connection'));
   });
 
-  it('renders due_diligence template with pending documents', async () => {
+  it('renders initial-conference when lead source is conference_meeting', async () => {
     const followUp = makeFollowUp({
-      templateName: 'due_diligence',
       contact: {
         firstName: 'Priya',
-        lastName: 'Patel',
         email: 'priya@test.com',
-        stage: 'due_diligence',
-        meta: { pendingDocuments: ['Track record report', 'Audited financials'] },
+        stage: 'initial_outreach',
+        leadSource: 'conference_meeting',
       },
     });
 
     const { body } = await renderEmail(followUp);
     assert.ok(body.includes('Priya'));
-    assert.ok(body.includes('Track record report'));
-    assert.ok(body.includes('Audited financials'));
+    assert.ok(body.includes('conference'));
   });
 
-  it('renders negotiation template with deadline', async () => {
+  it('renders followup-performance-hook for attempt 1', async () => {
     const followUp = makeFollowUp({
-      templateName: 'negotiation',
       contact: {
-        firstName: 'Michael',
-        lastName: "O'Brien",
-        email: 'michael@test.com',
-        company: 'Lakefront Wealth',
-        stage: 'negotiation',
-        meta: {
-          lastDiscussionPoint: 'allocation size',
-          deadline: 'March 20, 2026',
-        },
+        firstName: 'Test',
+        email: 'test@test.com',
+        stage: 'follow_up',
+      },
+      attemptNumber: 1,
+    });
+
+    const { body } = await renderEmail(followUp);
+    assert.ok(body.includes('performance') || body.includes('returns') || body.includes('data point'));
+  });
+
+  it('renders followup-comparison-hook for attempt 2', async () => {
+    const followUp = makeFollowUp({
+      contact: {
+        firstName: 'Test',
+        email: 'test@test.com',
+        stage: 'follow_up',
+      },
+      attemptNumber: 2,
+    });
+
+    const { body } = await renderEmail(followUp);
+    assert.ok(body.includes('compare') || body.includes('Compare') || body.includes('differentiation'));
+  });
+
+  it('renders breakup template', async () => {
+    const followUp = makeFollowUp({
+      contact: {
+        firstName: 'David',
+        email: 'david@test.com',
+        stage: 'breakup',
       },
     });
 
     const { body } = await renderEmail(followUp);
-    assert.ok(body.includes('Michael'));
-    assert.ok(body.includes('allocation size'));
-    assert.ok(body.includes('March 20, 2026'));
+    assert.ok(body.includes('David'));
+    assert.ok(body.includes('close') || body.includes('closing'));
+  });
+
+  it('renders engaged-nudge as default engaged template', async () => {
+    const followUp = makeFollowUp({
+      contact: {
+        firstName: 'Lisa',
+        email: 'lisa@test.com',
+        stage: 'engaged',
+      },
+    });
+
+    const { subject, body } = await renderEmail(followUp);
+    assert.ok(subject);
+    assert.ok(body.includes('Lisa'));
+  });
+
+  it('renders dd-data-room template for due diligence', async () => {
+    const followUp = makeFollowUp({
+      contact: {
+        firstName: 'Mark',
+        email: 'mark@test.com',
+        stage: 'due_diligence',
+      },
+    });
+
+    const { body } = await renderEmail(followUp);
+    assert.ok(body.includes('Mark'));
+    assert.ok(body.includes('data room') || body.includes('Data Room'));
+  });
+
+  it('renders on-hold-quarterly template', async () => {
+    const followUp = makeFollowUp({
+      contact: {
+        firstName: 'Anne',
+        email: 'anne@test.com',
+        stage: 'on_hold',
+      },
+    });
+
+    const { body } = await renderEmail(followUp);
+    assert.ok(body.includes('Anne'));
+    assert.ok(body.includes('quarter') || body.includes('update') || body.includes('while'));
+  });
+
+  it('renders post-meeting-feedback for attempt 1', async () => {
+    const followUp = makeFollowUp({
+      contact: {
+        firstName: 'Tom',
+        email: 'tom@test.com',
+        stage: 'post_meeting',
+        meta: { meetingDate: 'March 15, 2026' },
+      },
+      attemptNumber: 1,
+    });
+
+    const { body } = await renderEmail(followUp);
+    assert.ok(body.includes('Tom'));
+    assert.ok(body.includes('feedback') || body.includes('thoughts'));
   });
 
   it('handles missing optional fields gracefully', async () => {
     const followUp = makeFollowUp({
-      templateName: 'initial_outreach',
       contact: {
         firstName: 'Test',
         lastName: 'User',
         email: 'test@test.com',
-        company: '', // no company
+        company: '',
         stage: 'initial_outreach',
       },
     });
@@ -103,13 +174,12 @@ describe('Template Engine', () => {
     assert.ok(!body.includes('null'));
   });
 
-  it('throws on unknown template name', async () => {
+  it('throws on unknown stage with no template', async () => {
     const followUp = makeFollowUp({
-      templateName: 'nonexistent_template',
       contact: {
         firstName: 'Test',
         email: 'test@test.com',
-        stage: 'initial_outreach',
+        stage: 'nonexistent_stage',
       },
     });
 
@@ -131,6 +201,11 @@ function makeFollowUp(overrides = {}) {
     tags: [],
     lastContactDate: null,
     notes: '',
+    leadSource: null,
+    introducerPersonId: null,
+    outreachAttempts: 0,
+    investorType: null,
+    dataRoomAccess: null,
     meta: {},
     ...(overrides.contact || {}),
   };
@@ -139,8 +214,9 @@ function makeFollowUp(overrides = {}) {
     contact,
     reason: 'Test follow-up',
     daysSinceLastContact: 5,
-    urgencyScore: 5,
-    templateName: overrides.templateName || 'initial_outreach',
-    attemptNumber: 1,
+    urgencyScore: 0.5,
+    templateName: contact.stage,
+    attemptNumber: overrides.attemptNumber || 1,
+    stageConfig: null,
   };
 }

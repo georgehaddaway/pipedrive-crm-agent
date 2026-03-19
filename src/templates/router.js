@@ -1,7 +1,7 @@
 import Handlebars from 'handlebars';
 import { readFileSync, readdirSync } from 'fs';
 import { resolve, basename } from 'path';
-import config from '../config.js';
+import config from '../config/index.js';
 
 /** @type {Map<string, Handlebars.TemplateDelegate>} */
 const templateCache = new Map();
@@ -27,16 +27,72 @@ function loadTemplates() {
   console.log(`Loaded ${templateCache.size} email templates: ${[...templateCache.keys()].join(', ')}`);
 }
 
+// ── Template Resolution ──────────────────────────────
+
+/**
+ * Resolve which template file to use based on stage and contact context.
+ * Uses the template-mapping.json config to route by lead_source, attempt_number, etc.
+ *
+ * @param {Object} followUp
+ * @returns {string} Template name (without .hbs extension)
+ */
+function resolveTemplateName(followUp) {
+  const { contact, attemptNumber } = followUp;
+  const stageMapping = config.templateMapping.stages[contact.stage];
+
+  if (!stageMapping) {
+    // Fallback: use stage key directly
+    return contact.stage;
+  }
+
+  const { selection, templates } = stageMapping;
+
+  switch (selection) {
+    case 'by_lead_source': {
+      const source = contact.leadSource || 'default';
+      const templateFile = templates[source] || templates.default;
+      return basename(templateFile, '.hbs');
+    }
+
+    case 'by_attempt_number': {
+      const attempt = String(attemptNumber || 1);
+      const templateFile = templates[attempt] || templates.default;
+      return basename(templateFile, '.hbs');
+    }
+
+    case 'by_deal_context': {
+      const context = contact.dealContext || 'default';
+      const templateFile = templates[context] || templates.default;
+      return basename(templateFile, '.hbs');
+    }
+
+    case 'by_data_room_access': {
+      const access = contact.dataRoomAccess || 'default';
+      const templateFile = templates[access] || templates.default;
+      return basename(templateFile, '.hbs');
+    }
+
+    case 'single':
+    default: {
+      const templateFile = templates.default;
+      return basename(templateFile, '.hbs');
+    }
+  }
+}
+
+// ── Email Rendering ──────────────────────────────────
+
 /**
  * Render an email from a template using follow-up context.
+ * Routes to the correct template based on stage + contact data.
  *
- * @param {import('../pipedrive/types.js').FollowUp} followUp
+ * @param {Object} followUp
  * @returns {Promise<{ subject: string, body: string }>}
  */
 export async function renderEmail(followUp) {
   loadTemplates();
 
-  const { contact, templateName } = followUp;
+  const templateName = resolveTemplateName(followUp);
   const template = templateCache.get(templateName);
 
   if (!template) {
@@ -44,6 +100,8 @@ export async function renderEmail(followUp) {
       `Template "${templateName}" not found. Available: ${[...templateCache.keys()].join(', ')}`
     );
   }
+
+  const { contact } = followUp;
 
   // Build template context
   const context = {
@@ -56,12 +114,17 @@ export async function renderEmail(followUp) {
     fundName: config.sender.fundName,
     senderName: config.sender.name,
     daysSinceLastContact: followUp.daysSinceLastContact,
-    // Meta fields for specialized templates
-    meetingDate: contact.meta?.meetingDate,
+    attemptNumber: followUp.attemptNumber,
+    // CRM fields
+    leadSource: contact.leadSource,
+    investorType: contact.investorType,
+    // Meta fields
+    meetingDate: contact.meta?.meetingDate || contact.meta?.paulMeetingDate,
     agenda: contact.meta?.agenda,
     pendingDocuments: contact.meta?.pendingDocuments,
     lastDiscussionPoint: contact.meta?.lastDiscussionPoint,
     deadline: contact.meta?.deadline,
+    dataRoomAccess: contact.dataRoomAccess,
     notes: contact.notes,
   };
 
@@ -74,30 +137,34 @@ export async function renderEmail(followUp) {
 
   if (lines[0].startsWith('Subject:')) {
     subject = lines[0].replace('Subject:', '').trim();
-    // Skip the blank line after subject
     bodyStart = lines[1]?.trim() === '' ? 2 : 1;
   }
 
   const body = lines.slice(bodyStart).join('\n').trim();
 
-  // Optional: AI-powered personalization
-  if (config.anthropic.enabled) {
-    return polishWithAI(subject, body, contact);
+  // AI polish (stage-specific instructions from template mapping)
+  const stageMapping = config.templateMapping.stages[contact.stage];
+  const shouldPolish = stageMapping?.ai_polish !== false && config.anthropic.enabled;
+
+  if (shouldPolish) {
+    const aiInstructions = stageMapping?.ai_instructions || null;
+    return polishWithAI(subject, body, contact, aiInstructions);
   }
 
   return { subject, body };
 }
 
 /**
- * Use Claude to lightly personalize a rendered email draft.
- * Keeps the structure and intent, adds natural touches.
+ * Use Claude to personalize a rendered email draft.
+ * Uses stage-specific AI instructions from template-mapping.json.
  *
  * @param {string} subject
  * @param {string} body
- * @param {import('../pipedrive/types.js').Contact} contact
+ * @param {Object} contact
+ * @param {string|null} aiInstructions - Stage-specific tone/style instructions
  * @returns {Promise<{ subject: string, body: string }>}
  */
-async function polishWithAI(subject, body, contact) {
+async function polishWithAI(subject, body, contact, aiInstructions) {
   try {
     if (!anthropicClient) {
       const Anthropic = (await import('@anthropic-ai/sdk')).default;
@@ -105,6 +172,9 @@ async function polishWithAI(subject, body, contact) {
     }
 
     const notesContext = contact.notes ? `\nNotes from CRM: ${contact.notes}` : '';
+    const stageInstructions = aiInstructions
+      ? `\nStage-specific tone guidance: ${aiInstructions}`
+      : '';
 
     const response = await anthropicClient.messages.create({
       model: 'claude-sonnet-4-20250514',
@@ -112,13 +182,15 @@ async function polishWithAI(subject, body, contact) {
       messages: [
         {
           role: 'user',
-          content: `You are an email writing assistant for a hedge fund investor relations professional. Lightly personalize this email draft to feel more natural and human while keeping the same structure, tone, and intent. Do NOT change the core ask or add information not present. Keep it professional and concise.
+          content: `You are an email writing assistant for a fund distribution professional. Lightly personalize this email draft to feel more natural and human while keeping the same structure, tone, and intent. Do NOT change the core ask or add information not present. Keep it professional and concise.
+${stageInstructions}
 
 Contact info:
 - Name: ${contact.firstName} ${contact.lastName}
 - Company: ${contact.company || 'N/A'}
 - Pipeline stage: ${contact.stage}
-- Priority: ${contact.priority}${notesContext}
+- Lead source: ${contact.leadSource || 'N/A'}
+- Investor type: ${contact.investorType || 'N/A'}${notesContext}
 
 Current draft subject: ${subject}
 Current draft body:
@@ -143,7 +215,6 @@ BODY:
       };
     }
 
-    // Fallback to original if parsing fails
     console.warn(`AI personalization parse failed for ${contact.email}, using template output.`);
     return { subject, body };
   } catch (err) {

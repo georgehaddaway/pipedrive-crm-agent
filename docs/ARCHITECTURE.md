@@ -1,35 +1,128 @@
-# Pipedrive CRM Automation Agent - Architecture Overview
+# Pipedrive CRM Automation Agent - Architecture
 
 ## What It Does
 
-An intelligent automation agent that connects Pipedrive CRM to Gmail, eliminating manual follow-up tracking for sales and investor relations teams. The agent evaluates pipeline contacts against configurable rules, drafts personalized emails using AI, and delivers daily summaries to Slack.
+An automation agent that connects Pipedrive CRM to Gmail, handling investor follow-up tracking across a 9-stage pipeline. The agent evaluates contacts against configurable rules, scores urgency using a multi-factor formula, auto-advances deals through early stages, drafts context-aware emails using AI, and posts daily summaries to Slack.
 
 **Nothing is sent automatically.** All emails land in the Gmail Drafts folder for human review before sending.
 
 ---
 
-## System Architecture
+## Pipeline Flow
 
-![Architecture Diagram](docs/architecture_diagram.png)
-
-### Pipeline Flow
-
-The agent executes a five-step pipeline on a configurable schedule (default: 7 AM weekdays):
+The agent executes a seven-step pipeline (default: 7 AM weekdays via macOS launchd):
 
 | Step | What Happens |
 |---|---|
-| **1. Fetch Contacts** | Pulls active contacts from Pipedrive via REST API v2 (persons with open deals, enriched with pipeline stage and activity data) |
-| **2. Check Gmail Activity** | Cross-references each contact against Gmail history to find the actual last email exchange date |
-| **3. Evaluate Rules** | Applies configurable follow-up rules: days since last contact, pipeline stage thresholds, priority multipliers, exclusion tags |
-| **4. Draft Emails** | Renders personalized emails from Handlebars templates, then optionally polishes each draft with Claude AI for natural tone |
-| **5. Slack Summary** | Posts a structured summary with stage breakdown, high-priority flags, and draft count |
+| **1. Fetch Contacts** | Pulls persons with open deals from Pipedrive API v2, discovers custom fields, resolves pipeline stages |
+| **2. Check Gmail Activity** | Cross-references contacts against Gmail history to find actual last email dates |
+| **3. Evaluate Rules** | 5-step evaluation: exclusions → overdue check → urgency scoring → priority multipliers → rank & cap |
+| **4. Stage Advancement** | Auto-advances deals through stages 1-3 (Initial Outreach → Follow-Up → Breakup → Declined) on no-reply; detects replies to advance to Engaged |
+| **5. Draft Emails** | Selects templates by context (lead source, attempt number, deal state), renders with Handlebars, optionally polishes with Claude AI |
+| **6. Collect Flags** | Generates summary flags: introducer nudge, stale contact, breakup pending, hot lead |
+| **7. Slack Summary** | Posts structured summary with stage groupings, urgency scores, advancements, and flags |
 
-### Key Design Decisions
+---
 
-- **Draft-only model**: The agent never sends emails directly. Drafts appear in Gmail for human review, maintaining full control over outreach.
-- **CRM as source of truth**: Pipeline stage and contact data come from Pipedrive. Gmail is a secondary signal for last-contact timing.
-- **Configurable rules engine**: Follow-up thresholds, priority multipliers, and exclusion criteria are defined in JSON config files, not hardcoded.
-- **AI enhancement is optional**: Works without an Anthropic API key using template-based emails. AI personalization is an additive layer.
+## 9-Stage Pipeline
+
+| # | Stage | Pipedrive ID | Threshold | Max Attempts | Auto-Advance |
+|:-:|-------|:---:|:---:|:---:|---|
+| 1 | Initial Outreach | 159 | 4 days | 1 | → Follow-Up on no-reply |
+| 2 | Follow-Up | 160 | 5 days | 2 | → Breakup on no-reply |
+| 3 | Breakup | 161 | 7 days | 1 | → Declined on no-reply |
+| 4 | Engaged | 162 | 5 days | 3 | Manual only |
+| 5 | Post-Meeting | 163 | 3 days | 2 | Manual only |
+| 6 | Due Diligence | 164 | 7 days | — | Manual only |
+| 7 | Committed | 165 | — | — | Excluded |
+| 8 | On Hold | 166 | 90 days | 1 | Manual only |
+| 9 | Declined (Cold) | 167 | 365 days | 1 | Excluded |
+
+Stages 1-3 have automated write-back to Pipedrive. Stages 4+ require manual advancement. All advancements are logged as Pipedrive activity notes.
+
+---
+
+## Urgency Scoring
+
+Contacts are scored using a multi-factor formula:
+
+```
+urgency = base * source_multiplier * recency_decay * stage_weight * priority_multiplier
+```
+
+| Factor | Description | Range |
+|---|---|---|
+| `base` | days_since_contact / threshold, capped at 1.0 | 0 – 1.0 |
+| `source_multiplier` | Lead source boost (warm_intro=1.5, cold_email=0.7) | 0.5 – 1.5 |
+| `recency_decay` | Exponential decay (half-life 30 days, floor 0.3) | 0.3 – 1.0 |
+| `stage_weight` | Stage importance (due_diligence=1.2, initial_outreach=0.5) | 0.3 – 1.2 |
+| `priority_multiplier` | Contact priority (high=1.5, low=0.5) | 0.5 – 1.5 |
+
+Contacts scoring below 0.3 are dropped. The top 15 per run get drafts.
+
+---
+
+## Template Routing
+
+Templates are selected by context, not just stage:
+
+| Stage | Selection Logic | Templates |
+|---|---|---|
+| Initial Outreach | By lead source | warm-intro, conference, cold |
+| Follow-Up | By attempt number | performance hook (1), comparison hook (2), general (3+) |
+| Breakup | Single | permission-to-close |
+| Engaged | By deal context | schedule-paul, materials-followup, nudge |
+| Post-Meeting | By attempt number | feedback request (1), address concerns (2+) |
+| Due Diligence | By data room access | data-room offer, clarify |
+| On Hold | Single | quarterly update |
+| Declined | Single | annual re-engagement |
+
+16 Handlebars templates in `src/templates/emails/`. AI polish is stage-specific with per-stage instructions.
+
+---
+
+## Project Structure
+
+```
+├── config/
+│   ├── pipeline-stages.json     # 9-stage definitions, thresholds, cadence
+│   ├── follow-up-rules.json     # Exclusions, urgency formula, attempt limits
+│   ├── pipedrive-ids.json       # Stage key → Pipedrive stage ID mapping
+│   ├── pipedrive-fields.json    # Custom field definitions, rate limits
+│   └── template-mapping.json    # Stage → template routing rules
+├── src/
+│   ├── index.js                 # CLI entry point (--dry-run, --verbose)
+│   ├── orchestrator.js          # 7-step pipeline orchestration
+│   ├── config/
+│   │   └── index.js             # Config loader, validation, stage helpers
+│   ├── rules/
+│   │   ├── engine.js            # 5-step evaluation pipeline
+│   │   ├── advancement.js       # Auto-stage advancement (stages 1-3)
+│   │   └── introducer.js        # Introducer re-engagement flags
+│   ├── templates/
+│   │   ├── router.js            # Context-aware template selection + AI polish
+│   │   └── emails/              # 16 Handlebars templates
+│   ├── api/
+│   │   └── pipedrive.js         # API client: rate limiting, write-back, field discovery
+│   ├── gmail/
+│   │   ├── client.js            # Gmail API: activity lookup, draft creation
+│   │   └── auth.js              # One-time OAuth flow
+│   ├── summary/
+│   │   └── builder.js           # Slack summary with flags and stage groupings
+│   └── pipedrive/
+│       └── types.js             # JSDoc type definitions
+├── tests/
+│   ├── rules.test.js            # 15 tests for rules engine
+│   └── templates.test.js        # 12 tests for template router
+├── scripts/
+│   └── launchd-setup.sh         # macOS Launch Agent installer
+├── data/                        # Runtime data (gitignored)
+│   ├── gmail-token.json
+│   ├── runs/
+│   └── logs/
+└── docs/
+    └── ARCHITECTURE.md          # This file
+```
 
 ---
 
@@ -38,97 +131,50 @@ The agent executes a five-step pipeline on a configurable schedule (default: 7 A
 | Component | Technology |
 |---|---|
 | Runtime | Node.js (>= 20) |
-| CRM Integration | Pipedrive REST API v2 |
+| CRM | Pipedrive REST API v1/v2 |
 | Email | Gmail API (OAuth 2.0) |
 | Templates | Handlebars (.hbs) |
-| AI Personalization | Anthropic Claude API |
+| AI Polish | Anthropic Claude API (optional) |
 | Notifications | Slack Incoming Webhooks |
-| Scheduling | macOS launchd (Launch Agent) |
-| Config | dotenv + JSON config files |
+| Scheduling | macOS launchd |
+| Config | dotenv + JSON |
 
 ---
 
-## Data Flow
+## Pipedrive Custom Fields
 
+The agent auto-discovers these at startup via the v1 API:
+
+| Field | Type | Purpose | Required |
+|---|---|---|:---:|
+| Lead Source | Enum (dropdown) | Urgency scoring + template routing | No |
+| Outreach Attempts | Number | Auto-increment + stage advancement | No |
+| Introducer | Person link | Re-engagement flags | No |
+| Last Outbound Date | Date | Exclusion rules | No |
+| Investor Type | Text | Future segmentation | No |
+
+All fields are optional. The agent degrades gracefully without them.
+
+---
+
+## Deployment
+
+```bash
+git clone <repo-url>
+cd pipedrive-crm-automation
+npm install
+cp .env.example .env          # Fill in credentials
+npm run auth                  # Gmail OAuth (one-time)
+npm run dry-run               # Preview without side effects
+npm run setup-schedule        # Install macOS Launch Agent
 ```
-Pipedrive API                 Agent                          Gmail
-┌──────────────┐    ┌────────────────────────┐    ┌──────────────────┐
-│ Persons      │───▶│ Normalize contacts     │    │                  │
-│ Deals        │───▶│ Map pipeline stages    │    │                  │
-│ Stages       │───▶│ Resolve stage names    │    │                  │
-└──────────────┘    │                        │    │                  │
-                    │ ┌────────────────────┐ │    │                  │
-                    │ │ Rules Engine       │ │◀───│ Last email dates │
-                    │ │ - Stage thresholds │ │    │                  │
-                    │ │ - Priority scoring │ │    │                  │
-                    │ │ - Exclusion tags   │ │    │                  │
-                    │ └────────────────────┘ │    │                  │
-                    │          │              │    │                  │
-                    │ ┌────────────────────┐ │    │                  │
-                    │ │ Template Engine    │ │───▶│ Draft emails     │
-                    │ │ + AI Polish (opt)  │ │    │ (human review)   │
-                    │ └────────────────────┘ │    │                  │
-                    └────────────────────────┘    └──────────────────┘
-                              │
-                    ┌─────────────────┐
-                    │ Slack           │
-                    │ Daily summary   │
-                    └─────────────────┘
-```
 
 ---
 
-## Follow-Up Rules Engine
+## Security
 
-Rules are defined in a JSON configuration file and applied per pipeline stage:
-
-| Parameter | Description | Example |
-|---|---|---|
-| Follow-up threshold | Days since last contact before flagging | 3 days for outreach, 5 for due diligence |
-| Priority multiplier | Adjusts threshold by contact priority | High priority = 0.5x (faster follow-up) |
-| Max attempts | Limits follow-up attempts per contact | 3 attempts for initial outreach |
-| Exclusion tags | Skips contacts with specific CRM tags | "do-not-contact", "unsubscribed" |
-| Stage mapping | Maps CRM stage names to rule keys | Configurable per deployment |
-
-Urgency scoring (0-10) combines days overdue, priority level, and stage context to rank which contacts need attention first.
-
----
-
-## Deployment Model
-
-The agent runs locally on a Mac. Setup involves:
-
-1. Install Node.js and dependencies (~2 minutes)
-2. Connect Pipedrive API token (~2 minutes)
-3. Authorize Gmail via OAuth (~10 minutes, one-time)
-4. Configure follow-up rules and templates (~15 minutes)
-5. Install the macOS Launch Agent (`npm run setup-schedule`)
-
-No cloud infrastructure, databases, or ongoing DevOps required. The agent runs as a single-shot Node.js process triggered by macOS `launchd` on schedule. Unlike in-process schedulers, `launchd` fires missed jobs after sleep/wake, so the pipeline runs reliably even if the Mac was asleep at the scheduled time.
-
----
-
-## Customization Points
-
-| What | How | Effort |
-|---|---|---|
-| Follow-up timing | Edit `config/rules.json` | 5 min |
-| Pipeline stage mapping | Edit `config/stage-map.json` | 5 min |
-| Email templates | Edit `.hbs` files in `config/templates/` | 15-30 min |
-| CRM source | Swap `src/pipedrive/client.js` for another CRM | 2-4 hours |
-| Add CRM fields | Update `normalizeContact()` in client | 30 min |
-| Schedule | Set `CRON_SCHEDULE` in `.env`, then re-run `npm run setup-schedule` | 2 min |
-
----
-
-## Security & Privacy
-
-- OAuth 2.0 for Gmail access (no password storage)
-- API tokens stored in local `.env` file (gitignored)
-- No data leaves the local machine except API calls to Pipedrive, Gmail, Slack, and optionally Anthropic
-- All email content stays in the user's own Gmail account
-- No third-party analytics or telemetry
-
----
-
-*Built with Node.js. Source code available on request.*
+- OAuth 2.0 for Gmail (no password storage)
+- API tokens in local `.env` (gitignored)
+- No data leaves the machine except API calls to Pipedrive, Gmail, Slack, and optionally Anthropic
+- Email content stays in the user's Gmail account
+- No telemetry or analytics

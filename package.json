@@ -1,7 +1,7 @@
 {
   "name": "pipedrive-crm-automation",
-  "version": "2.0.0",
-  "description": "Automated pipeline manager syncing Pipedrive CRM with Gmail for investor follow-ups",
+  "version": "3.0.0",
+  "description": "Automated 9-stage pipeline manager syncing Pipedrive CRM with Gmail for investor follow-ups",
   "type": "module",
   "engines": {
     "node": ">=20.0.0"
@@ -9,6 +9,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "run": "node src/index.js",
     "dry-run": "node src/index.js --dry-run",
     "auth": "node src/gmail/auth.js",
     "setup-schedule": "bash scripts/launchd-setup.sh install",
