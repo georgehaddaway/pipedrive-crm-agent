@@ -204,33 +204,107 @@ PLIST
 
   echo "Plist written to: ${PLIST_PATH}"
 
-  # Load
+  # ── Voice Refresh (weekly, Sundays at 6 AM) ──────────
+  local VOICE_LABEL="com.pipedrive-crm.voice-refresh"
+  local VOICE_PLIST_PATH="$HOME/Library/LaunchAgents/${VOICE_LABEL}.plist"
+
+  # Unload existing voice refresh if present
+  if launchctl list "$VOICE_LABEL" &>/dev/null; then
+    launchctl unload "$VOICE_PLIST_PATH" 2>/dev/null || true
+  fi
+
+  cat > "$VOICE_PLIST_PATH" <<VPLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${VOICE_LABEL}</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>${NODE_PATH}</string>
+    <string>${PROJECT_DIR}/scripts/refresh-voice.js</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>${PROJECT_DIR}</string>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>0</integer>
+    <key>Hour</key>
+    <integer>6</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>${LOG_DIR}/voice-refresh.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>${LOG_DIR}/voice-refresh-error.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>KeepAlive</key>
+  <false/>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:$(dirname "${NODE_PATH}")</string>
+  </dict>
+</dict>
+</plist>
+VPLIST
+
+  launchctl load "$VOICE_PLIST_PATH"
+  echo "Voice refresh plist written to: ${VOICE_PLIST_PATH}"
+
+  # Load daily agent
   launchctl load "$PLIST_PATH"
   echo ""
-  echo "Launch Agent installed and loaded."
-  echo "The agent will auto-update from GitHub before each scheduled run."
+  echo "Launch Agents installed and loaded."
+  echo "  Daily agent:   7 AM weekdays (follow-up drafts)"
+  echo "  Voice refresh: 6 AM Sundays (update writing style from recent emails)"
   echo ""
   echo "Useful commands:"
   echo "  Check status:   launchctl list ${LABEL}"
   echo "  View logs:      tail -f ${LOG_DIR}/agent.log"
   echo "  View errors:    tail -f ${LOG_DIR}/agent-error.log"
   echo "  Manual trigger: launchctl start ${LABEL}"
+  echo "  Voice refresh:  npm run update-voice"
   echo "  Uninstall:      bash scripts/launchd-setup.sh uninstall"
 }
 
 # ── Uninstall ────────────────────────────────────────────
 cmd_uninstall() {
-  if [ ! -f "$PLIST_PATH" ]; then
-    echo "No Launch Agent found at ${PLIST_PATH}. Nothing to uninstall."
-    exit 0
+  # Remove daily agent
+  if [ -f "$PLIST_PATH" ]; then
+    echo "Unloading daily agent..."
+    launchctl unload "$PLIST_PATH" 2>/dev/null || true
+    rm -f "$PLIST_PATH"
+    echo "Removed ${PLIST_PATH}"
   fi
 
-  echo "Unloading Launch Agent..."
-  launchctl unload "$PLIST_PATH" 2>/dev/null || true
+  # Remove voice refresh
+  local VOICE_LABEL="com.pipedrive-crm.voice-refresh"
+  local VOICE_PLIST_PATH="$HOME/Library/LaunchAgents/${VOICE_LABEL}.plist"
+  if [ -f "$VOICE_PLIST_PATH" ]; then
+    echo "Unloading voice refresh..."
+    launchctl unload "$VOICE_PLIST_PATH" 2>/dev/null || true
+    rm -f "$VOICE_PLIST_PATH"
+    echo "Removed ${VOICE_PLIST_PATH}"
+  fi
 
-  rm -f "$PLIST_PATH"
-  echo "Removed ${PLIST_PATH}"
-  echo "Launch Agent uninstalled. Logs in ${LOG_DIR}/ have been preserved."
+  if [ ! -f "$PLIST_PATH" ] && [ ! -f "$VOICE_PLIST_PATH" ]; then
+    echo "No Launch Agents found. Nothing to uninstall."
+  else
+    echo "Launch Agents uninstalled. Logs in ${LOG_DIR}/ have been preserved."
+  fi
 }
 
 # ── Status ───────────────────────────────────────────────

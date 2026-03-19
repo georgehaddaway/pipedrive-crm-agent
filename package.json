@@ -1,6 +1,6 @@
 {
   "name": "pipedrive-crm-automation",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Automated 9-stage pipeline manager syncing Pipedrive CRM with Gmail for investor follow-ups",
   "type": "module",
   "engines": {
@@ -15,6 +15,7 @@
     "setup-schedule": "bash scripts/launchd-setup.sh install",
     "remove-schedule": "bash scripts/launchd-setup.sh uninstall",
     "schedule-status": "bash scripts/launchd-setup.sh status",
+    "update-voice": "node scripts/refresh-voice.js",
     "test": "node --test tests/*.test.js"
   },
   "dependencies": {

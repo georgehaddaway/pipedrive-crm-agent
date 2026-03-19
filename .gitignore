@@ -7,3 +7,4 @@ data/pipedrive-export.csv
 *.log
 
 .DS_Store
+config/voice-profile.backup-*.json
