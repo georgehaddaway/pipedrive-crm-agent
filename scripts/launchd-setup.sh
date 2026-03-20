@@ -121,44 +121,16 @@ cmd_install() {
     launchctl unload "$PLIST_PATH" 2>/dev/null || true
   fi
 
-  # Write wrapper script that auto-updates before each run
-  local wrapper_script="${PROJECT_DIR}/scripts/run-agent.sh"
-  cat > "$wrapper_script" <<'WRAPPER'
-#!/bin/bash
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-LOG_DIR="${PROJECT_DIR}/data/logs"
-
-cd "$PROJECT_DIR"
-
-echo "──────────────────────────────────────────"
-echo "Agent run started: $(date)"
-echo "──────────────────────────────────────────"
-
-# Auto-update from GitHub
-echo "Pulling latest changes from GitHub..."
-if git pull origin main --ff-only 2>&1; then
-  echo "Code updated successfully."
-else
-  echo "Warning: git pull failed. Running with existing code."
-fi
-
-# Install any new/changed dependencies
-echo "Checking dependencies..."
-npm install --production 2>&1
-
-echo "Starting agent..."
-WRAPPER
-
-  # Append the node path dynamically (not inside the single-quoted heredoc)
-  echo "\"${NODE_PATH}\" \"\${PROJECT_DIR}/src/index.js\" \"\$@\"" >> "$wrapper_script"
-
-  chmod +x "$wrapper_script"
-  echo "Wrapper script written to: ${wrapper_script}"
+  # The Node.js wrapper (scripts/run-wrapper.js) is idempotent:
+  #   - Skips weekends
+  #   - Skips if today's run file already exists
+  #   - Auto-pulls from git and installs deps before running
+  # Using Node.js directly avoids macOS TCC permission issues with /bin/bash.
+  echo "Using wrapper: ${PROJECT_DIR}/scripts/run-wrapper.js"
 
   # Write plist (runs wrapper script instead of node directly)
+  # RunAtLoad=true ensures the agent fires on login to catch missed runs.
+  # The wrapper's idempotent guard prevents double-runs.
   cat > "$PLIST_PATH" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -169,8 +141,8 @@ WRAPPER
 
   <key>ProgramArguments</key>
   <array>
-    <string>/bin/bash</string>
-    <string>${PROJECT_DIR}/scripts/run-agent.sh</string>
+    <string>${NODE_PATH}</string>
+    <string>${PROJECT_DIR}/scripts/run-wrapper.js</string>
   </array>
 
   <key>WorkingDirectory</key>
@@ -188,7 +160,7 @@ ${calendar_intervals}
   <string>${LOG_DIR}/agent-error.log</string>
 
   <key>RunAtLoad</key>
-  <false/>
+  <true/>
 
   <key>KeepAlive</key>
   <false/>
