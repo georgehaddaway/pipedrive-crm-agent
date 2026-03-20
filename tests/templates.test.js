@@ -1,15 +1,15 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-process.env.SENDER_NAME = 'Test Sender';
+process.env.SENDER_NAME = 'James';
 process.env.SENDER_EMAIL = 'test@example.com';
-process.env.FUND_NAME = 'Apex Growth Fund';
+process.env.FUND_NAME = 'Satori Power';
 process.env.ANTHROPIC_API_KEY = '';
 
 const { renderEmail } = await import('../src/templates/router.js');
 
 describe('Template Router', () => {
-  it('renders initial-cold template by default', async () => {
+  it('renders initial-cold template with data hooks', async () => {
     const followUp = makeFollowUp({
       contact: {
         firstName: 'Sarah',
@@ -22,24 +22,28 @@ describe('Template Router', () => {
 
     const { subject, body } = await renderEmail(followUp);
     assert.ok(subject, 'Subject should not be empty');
+    assert.ok(!subject.includes('\u2014'), 'Subject should not contain em-dash');
     assert.ok(body.includes('Sarah'));
-    assert.ok(body.includes('Test Sender'));
+    assert.ok(body.includes('Take care'));
+    assert.ok(!body.includes('Best,'));
+    assert.ok(body.includes('Paul'));
   });
 
   it('renders initial-warm-intro when lead source is warm_intro', async () => {
     const followUp = makeFollowUp({
       contact: {
-        firstName: 'James',
+        firstName: 'Alex',
         lastName: 'R',
-        email: 'james@test.com',
+        email: 'alex@test.com',
         stage: 'initial_outreach',
         leadSource: 'warm_intro',
       },
     });
 
-    const { body } = await renderEmail(followUp);
-    assert.ok(body.includes('James'));
-    assert.ok(body.includes('mutual connection'));
+    const { subject, body } = await renderEmail(followUp);
+    assert.ok(!subject.includes('\u2014'), 'Subject should not contain em-dash');
+    assert.ok(body.includes('Alex'));
+    assert.ok(body.includes('Take care'));
   });
 
   it('renders initial-conference when lead source is conference_meeting', async () => {
@@ -52,9 +56,11 @@ describe('Template Router', () => {
       },
     });
 
-    const { body } = await renderEmail(followUp);
+    const { subject, body } = await renderEmail(followUp);
+    assert.ok(!subject.includes('\u2014'), 'Subject should not contain em-dash');
     assert.ok(body.includes('Priya'));
     assert.ok(body.includes('conference'));
+    assert.ok(body.includes('Take care'));
   });
 
   it('renders followup-performance-hook for attempt 1', async () => {
@@ -67,8 +73,10 @@ describe('Template Router', () => {
       attemptNumber: 1,
     });
 
-    const { body } = await renderEmail(followUp);
-    assert.ok(body.includes('performance') || body.includes('returns') || body.includes('data point'));
+    const { subject, body } = await renderEmail(followUp);
+    assert.ok(!subject.includes('\u2014'), 'Subject should not contain em-dash');
+    assert.ok(body.includes('EBITDA') || body.includes('returns') || body.includes('performance'));
+    assert.ok(body.includes('Take care'));
   });
 
   it('renders followup-comparison-hook for attempt 2', async () => {
@@ -81,8 +89,10 @@ describe('Template Router', () => {
       attemptNumber: 2,
     });
 
-    const { body } = await renderEmail(followUp);
-    assert.ok(body.includes('compare') || body.includes('Compare') || body.includes('differentiation'));
+    const { subject, body } = await renderEmail(followUp);
+    assert.ok(!subject.includes('\u2014'), 'Subject should not contain em-dash');
+    assert.ok(body.includes('Nvidia') || body.includes('valuation') || body.includes('dislocation'));
+    assert.ok(body.includes('Take care'));
   });
 
   it('renders breakup template', async () => {
@@ -94,9 +104,11 @@ describe('Template Router', () => {
       },
     });
 
-    const { body } = await renderEmail(followUp);
+    const { subject, body } = await renderEmail(followUp);
+    assert.ok(!subject.includes('\u2014'), 'Subject should not contain em-dash');
     assert.ok(body.includes('David'));
-    assert.ok(body.includes('close') || body.includes('closing'));
+    assert.ok(body.includes('stop reaching out') || body.includes('update my notes'));
+    assert.ok(body.includes('Take care'));
   });
 
   it('renders engaged-nudge as default engaged template', async () => {
@@ -110,7 +122,10 @@ describe('Template Router', () => {
 
     const { subject, body } = await renderEmail(followUp);
     assert.ok(subject);
+    assert.ok(!subject.includes('\u2014'), 'Subject should not contain em-dash');
     assert.ok(body.includes('Lisa'));
+    assert.ok(body.includes('Paul'));
+    assert.ok(body.includes('Take care'));
   });
 
   it('renders dd-data-room template for due diligence', async () => {
@@ -122,9 +137,11 @@ describe('Template Router', () => {
       },
     });
 
-    const { body } = await renderEmail(followUp);
+    const { subject, body } = await renderEmail(followUp);
+    assert.ok(!subject.includes('\u2014'), 'Subject should not contain em-dash');
     assert.ok(body.includes('Mark'));
-    assert.ok(body.includes('data room') || body.includes('Data Room'));
+    assert.ok(body.includes('data room') || body.includes('Nicole'));
+    assert.ok(body.includes('Take care'));
   });
 
   it('renders on-hold-quarterly template', async () => {
@@ -136,9 +153,11 @@ describe('Template Router', () => {
       },
     });
 
-    const { body } = await renderEmail(followUp);
+    const { subject, body } = await renderEmail(followUp);
+    assert.ok(!subject.includes('\u2014'), 'Subject should not contain em-dash');
     assert.ok(body.includes('Anne'));
-    assert.ok(body.includes('quarter') || body.includes('update') || body.includes('while'));
+    assert.ok(body.includes('EBITDA') || body.includes('update') || body.includes('perform'));
+    assert.ok(body.includes('Take care'));
   });
 
   it('renders post-meeting-feedback for attempt 1', async () => {
@@ -152,9 +171,11 @@ describe('Template Router', () => {
       attemptNumber: 1,
     });
 
-    const { body } = await renderEmail(followUp);
+    const { subject, body } = await renderEmail(followUp);
+    assert.ok(!subject.includes('\u2014'), 'Subject should not contain em-dash');
     assert.ok(body.includes('Tom'));
-    assert.ok(body.includes('feedback') || body.includes('thoughts'));
+    assert.ok(body.includes('feedback') || body.includes('honest'));
+    assert.ok(body.includes('Take care'));
   });
 
   it('handles missing optional fields gracefully', async () => {
@@ -170,9 +191,11 @@ describe('Template Router', () => {
 
     const { subject, body } = await renderEmail(followUp);
     assert.ok(subject);
+    assert.ok(!subject.includes('\u2014'), 'Subject should not contain em-dash');
     assert.ok(body);
     assert.ok(!body.includes('undefined'));
     assert.ok(!body.includes('null'));
+    assert.ok(body.includes('Take care'));
   });
 
   it('throws on unknown stage with no template', async () => {
@@ -185,6 +208,23 @@ describe('Template Router', () => {
     });
 
     await assert.rejects(() => renderEmail(followUp), /not found/);
+  });
+
+  it('never produces em-dash in any subject line', async () => {
+    const stages = [
+      'initial_outreach', 'follow_up', 'breakup', 'engaged',
+      'post_meeting', 'due_diligence', 'on_hold', 'declined_cold',
+    ];
+
+    for (const stage of stages) {
+      const followUp = makeFollowUp({
+        contact: { firstName: 'Test', email: 'test@test.com', stage },
+      });
+      const { subject } = await renderEmail(followUp);
+      assert.ok(!subject.includes('\u2014'), `Stage ${stage} subject contains em-dash: "${subject}"`);
+      assert.ok(!subject.includes('\u2013'), `Stage ${stage} subject contains en-dash: "${subject}"`);
+      assert.ok(!subject.includes('\u00E2'), `Stage ${stage} subject contains mojibake: "${subject}"`);
+    }
   });
 });
 

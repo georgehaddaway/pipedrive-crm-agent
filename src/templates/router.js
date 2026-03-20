@@ -148,85 +148,138 @@ export async function renderEmail(followUp) {
 
   if (shouldPolish) {
     const aiInstructions = stageMapping?.ai_instructions || null;
-    return polishWithAI(subject, body, contact, aiInstructions);
+    const result = await polishWithAI(subject, body, contact, followUp, aiInstructions);
+    return { subject: cleanSubject(result.subject), body: result.body };
   }
 
-  return { subject, body };
+  return { subject: cleanSubject(subject), body };
 }
+
+// ── Subject Line Sanitizer ───────────────────────────
+
+/**
+ * Strip encoding artifacts, em-dashes, and other problematic characters
+ * from subject lines. These cause garbled display (e.g. "â€"") when
+ * Gmail encodes them.
+ *
+ * @param {string} subject
+ * @returns {string}
+ */
+function cleanSubject(subject) {
+  return subject
+    // Replace em-dash (U+2014) and en-dash (U+2013) with hyphen
+    .replace(/[\u2014\u2013]/g, '-')
+    // Replace common UTF-8 mojibake for em-dash
+    .replace(/â€"/g, '-')
+    .replace(/â€"/g, '-')
+    // Replace smart quotes with straight quotes
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    // Remove any remaining non-ASCII that isn't a letter
+    .replace(/[^\x20-\x7E\u00C0-\u024F]/g, '')
+    .trim();
+}
+
+// ── AI Polish ────────────────────────────────────────
 
 /**
  * Use Claude to personalize a rendered email draft.
- * Uses stage-specific AI instructions from template-mapping.json.
+ * Uses a structured prompt with the voice profile as a system message
+ * and the draft + contact context as the user message.
  *
  * @param {string} subject
  * @param {string} body
  * @param {Object} contact
+ * @param {Object} followUp - Full follow-up context (attemptNumber, daysSince, etc.)
  * @param {string|null} aiInstructions - Stage-specific tone/style instructions
  * @returns {Promise<{ subject: string, body: string }>}
  */
-async function polishWithAI(subject, body, contact, aiInstructions) {
+async function polishWithAI(subject, body, contact, followUp, aiInstructions) {
   try {
     if (!anthropicClient) {
       const Anthropic = (await import('@anthropic-ai/sdk')).default;
       anthropicClient = new Anthropic({ apiKey: config.anthropic.apiKey });
     }
 
-    const notesContext = contact.notes ? `\nNotes from CRM: ${contact.notes}` : '';
-    const stageInstructions = aiInstructions
-      ? `\nStage-specific tone guidance: ${aiInstructions}`
-      : '';
+    const vp = config.voiceProfile || {};
+    const stageVoice = vp.stage_voice_notes?.[contact.stage] || '';
 
-    // Build voice profile instructions if available
-    let voiceInstructions = '';
-    if (config.voiceProfile) {
-      const vp = config.voiceProfile;
-      const stageVoice = vp.stage_voice_notes?.[contact.stage] || '';
+    // ── System message: voice profile ──────────────
+    const systemMessage = `You are ghostwriting investor outreach emails for ${vp.sender || 'the sender'}, ${vp.role || ''} at ${vp.firm || ''}.
 
-      voiceInstructions = `
-VOICE PROFILE — You must write in this person's exact voice:
-- Tone: ${vp.tone.overall}
-- Register: ${vp.tone.register}
-- Structure: ${vp.structure_patterns.greeting} ${vp.structure_patterns.body}
-- Ask style: ${vp.structure_patterns.ask}
-- Closing: ${vp.structure_patterns.closing}
-- Max length: ${vp.structure_patterns.length}
+<voice>
+Tone: ${vp.tone?.overall || 'Professional and direct'}
+Register: ${vp.tone?.register || 'Conversational'}
+Warmth: ${vp.tone?.warmth_level || 'Moderate'}
+</voice>
 
-DO: ${vp.do.join('. ')}
-DON'T: ${vp.dont.join('. ')}
+<structure>
+Greeting: ${vp.structure_patterns?.greeting || 'First name only'}
+Opening: ${vp.structure_patterns?.opening || 'Set context in 1-2 sentences'}
+Body: ${vp.structure_patterns?.body || '2-3 short paragraphs'}
+Ask: ${vp.structure_patterns?.ask || 'Small and low-pressure'}
+Closing: ${vp.structure_patterns?.closing || 'Take care, [name]'}
+Length: ${vp.structure_patterns?.length || '100-200 words'}
+</structure>
 
-Data points to weave in naturally (use 1-2, not all): ${vp.data_points_to_include.join('; ')}
-${stageVoice ? `\nVoice for ${contact.stage} stage: ${stageVoice}` : ''}`;
-    }
+<rules>
+DO:
+${(vp.do || []).map(d => `- ${d}`).join('\n')}
+
+DON'T:
+${(vp.dont || []).map(d => `- ${d}`).join('\n')}
+</rules>
+
+<data_points>
+Available data points to weave in naturally (use at most 1-2, not all):
+${(vp.data_points_to_include || []).map(d => `- ${d}`).join('\n')}
+</data_points>
+
+<subject_line_rules>
+- Use plain hyphens (-), NEVER em-dashes or special characters
+- Keep short and direct
+- Follow these patterns: ${(vp.example_subject_lines || []).join(', ')}
+</subject_line_rules>
+
+${vp.few_shot_examples?.length ? `<examples>\nThese are real emails written by ${vp.sender}. Match this style exactly:\n\n${vp.few_shot_examples.map((ex, i) => `--- Example ${i + 1} ---\nSubject: ${ex.subject}\n${ex.body}`).join('\n\n')}\n</examples>` : ''}`;
+
+    // ── User message: draft + context ──────────────
+    const userMessage = `<contact>
+Name: ${contact.firstName} ${contact.lastName}
+Company: ${contact.company || 'Unknown'}
+Stage: ${contact.stage}
+Lead source: ${contact.leadSource || 'Unknown'}
+Investor type: ${contact.investorType || 'Unknown'}
+Outreach attempt: ${followUp.attemptNumber || 1}
+Days since last contact: ${followUp.daysSinceLastContact || 'Unknown'}
+${contact.notes ? `CRM notes: ${contact.notes}` : ''}
+</contact>
+
+${stageVoice ? `<stage_guidance>\n${stageVoice}\n</stage_guidance>\n` : ''}${aiInstructions ? `<tone_guidance>\n${aiInstructions}\n</tone_guidance>\n` : ''}
+<draft>
+Subject: ${subject}
+
+${body}
+</draft>
+
+Rewrite this draft in ${vp.sender || 'the sender'}'s voice. Rules:
+1. Keep the same intent and core information
+2. Do NOT invent facts, meetings, or details not in the draft or contact notes
+3. The sign-off MUST be "Take care,\\n${vp.sender || config.sender?.name || 'James'}"
+4. Subject line must use plain hyphens (-), never em-dashes or special characters
+5. Do NOT use exclamation marks
+6. Keep it under 200 words
+
+Return ONLY this format, nothing else:
+SUBJECT: <subject line>
+BODY:
+<email body>`;
 
     const response = await anthropicClient.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: `You are rewriting an email draft to match a specific person's writing voice. ${voiceInstructions ? 'Follow the voice profile exactly.' : 'Keep the tone professional and concise.'}
-${voiceInstructions}
-${stageInstructions}
-
-Contact info:
-- Name: ${contact.firstName} ${contact.lastName}
-- Company: ${contact.company || 'N/A'}
-- Pipeline stage: ${contact.stage}
-- Lead source: ${contact.leadSource || 'N/A'}
-- Investor type: ${contact.investorType || 'N/A'}${notesContext}
-
-Current draft subject: ${subject}
-Current draft body:
-${body}
-
-Rewrite this email to match the voice profile. Keep the same intent and core information. Do NOT add facts not present in the draft. Do NOT change the sign-off.
-
-Return your response in this exact format:
-SUBJECT: <improved subject line>
-BODY:
-<improved body text>`,
-        },
-      ],
+      system: systemMessage,
+      messages: [{ role: 'user', content: userMessage }],
     });
 
     const aiText = response.content[0]?.text || '';
@@ -240,10 +293,10 @@ BODY:
       };
     }
 
-    console.warn(`AI personalization parse failed for ${contact.email}, using template output.`);
+    console.warn(`  AI polish parse failed for ${contact.email}, using template output.`);
     return { subject, body };
   } catch (err) {
-    console.warn(`AI personalization error for ${contact.email}: ${err.message}. Using template output.`);
+    console.warn(`  AI polish error for ${contact.email}: ${err.message}. Using template output.`);
     return { subject, body };
   }
 }

@@ -13,7 +13,7 @@
         "default": "initial-cold.hbs"
       },
       "ai_polish": true,
-      "ai_instructions": "Keep it brief and personal. Reference the specific connection point if available. No hard sell. Tone: warm, direct, professional."
+      "ai_instructions": "This is a first-touch email. Reference the specific connection point if the lead source or CRM notes mention one (who introduced them, where they met). Keep the fund pitch to 2-3 sentences. Attach materials, don't paste content inline. The ask is always a call with Paul, never a meeting with James. If no connection point exists, lead with the valuation gap."
     },
     "follow_up": {
       "selection": "by_attempt_number",
@@ -23,7 +23,7 @@
         "default": "followup-general.hbs"
       },
       "ai_polish": true,
-      "ai_instructions": "Short and punchy. Lead with the data point. One clear CTA. No repeating the initial outreach pitch."
+      "ai_instructions": "This is a follow-up to a previous email that got no response. Do NOT repeat the initial pitch. Lead with a single sharp data point (valuation gap, performance stat, market context). Keep shorter than the intro email. One clear CTA (call with Paul or send materials). Acknowledge they're busy without being apologetic."
     },
     "breakup": {
       "selection": "single",
@@ -41,7 +41,7 @@
         "default": "engaged-nudge.hbs"
       },
       "ai_polish": true,
-      "ai_instructions": "Conversational and helpful. Reference their specific interest or question if available. Goal: get them on a call with Paul."
+      "ai_instructions": "This person has shown interest. Be conversational and helpful, not salesy. Reference their specific interest or question from CRM notes if available. The goal is always to get them on a call with Paul. Don't re-pitch the fund basics they already know."
     },
     "post_meeting": {
       "selection": "by_attempt_number",
@@ -50,7 +50,7 @@
         "default": "post-meeting-concerns.hbs"
       },
       "ai_polish": true,
-      "ai_instructions": "Direct and candid. Ask for honest feedback. Proactively address the most common objections. Tone: confident but not pushy."
+      "ai_instructions": "This person has already met with the team. Be direct and candid. Ask for honest feedback rather than a polite maybe. If CRM notes mention specific concerns or objections, address them proactively. Show confidence in the strategy without being pushy."
     },
     "due_diligence": {
       "selection": "by_data_room_access",
@@ -62,7 +62,7 @@
         "default": "dd-data-room.hbs"
       },
       "ai_polish": true,
-      "ai_instructions": "Supportive and proactive. Offer to clarify specifics. Show awareness that DD is a thorough process. Tone: patient, detail-oriented."
+      "ai_instructions": "This person is in active due diligence. Be supportive and proactive. Offer to clarify specific items they might be reviewing. Reference Nicole Weirich for data room access. Show awareness that DD is a thorough process. Keep tone patient and detail-oriented."
     },
     "on_hold": {
       "selection": "single",
@@ -70,7 +70,7 @@
         "default": "on-hold-quarterly.hbs"
       },
       "ai_polish": true,
-      "ai_instructions": "Substantive update only. Lead with something concrete — new performance data, a milestone, or market-relevant insight. Never a naked check-in. Tone: informative, low-pressure."
+      "ai_instructions": "This person has paused their evaluation. Send a substantive update only. Lead with something concrete: updated performance data, a new valuation comparison, or a market development in power/energy/industrials. Never send a naked check-in. If CRM notes indicate why they paused, acknowledge it briefly. Tone: informative, zero pressure."
     },
     "declined_cold": {
       "selection": "single",
@@ -78,7 +78,7 @@
         "default": "declined-cold-annual.hbs"
       },
       "ai_polish": true,
-      "ai_instructions": "Very light touch. Lead with a compelling reason to reconnect — major milestone, new fund, or significant performance. Tone: respectful, no pressure, acknowledging they passed previously."
+      "ai_instructions": "This person previously passed. Be extremely light-touch. Lead with a compelling reason to reconnect: significant performance since they passed, a major market shift in our sectors, or a new fund milestone. Acknowledge that they passed and don't re-pitch from scratch. Tone: respectful, completely no-pressure. Make it easy to say no again."
     }
   }
 }
