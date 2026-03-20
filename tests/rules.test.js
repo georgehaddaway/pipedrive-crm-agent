@@ -175,13 +175,13 @@ describe('Rules Engine (9-stage)', () => {
       email: 'warm@test.com',
       stage: 'follow_up',
       leadSource: 'warm_intro',
-      lastContactDate: daysAgo(20),
+      lastContactDate: daysAgo(10),
     });
     const cold = makeContact({
       email: 'cold@test.com',
       stage: 'follow_up',
       leadSource: 'cold_email',
-      lastContactDate: daysAgo(20),
+      lastContactDate: daysAgo(10),
     });
 
     const result = evaluateContacts([warm, cold], emptyGmail);

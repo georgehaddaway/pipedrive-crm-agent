@@ -464,14 +464,24 @@ async function updateDealStage(dealId, stageId) {
 async function updatePersonField(personId, fieldName, value) {
   const key = getPersonFieldKey(fieldName);
   if (!key) {
-    console.warn(`  Cannot update field "${fieldName}": field not found in Pipedrive`);
+    // Field doesn't exist in Pipedrive - this is not an error, just skip silently.
+    // The warning is already logged during field discovery.
     return;
   }
 
-  await apiRequest(`/persons/${personId}`, {
-    method: 'PATCH',
-    body: { [key]: value },
+  // Use v1 API for person updates - v2 rejects custom field hash keys
+  await rateLimit();
+  const url = `https://${config.pipedrive.companyDomain}.pipedrive.com/api/v1/persons/${personId}?api_token=${config.pipedrive.apiToken}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ [key]: value }),
   });
+
+  if (!res.ok) {
+    const errorBody = await res.text().catch(() => '');
+    throw new Error(`Pipedrive API error: ${res.status} ${res.statusText} (PUT /persons/${personId}): ${errorBody}`);
+  }
 }
 
 /**

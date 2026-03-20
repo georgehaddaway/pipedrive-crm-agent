@@ -142,7 +142,7 @@ export async function applyAdvancement(advancement, pipedriveClient) {
 
     // 2. Reset outreach attempts
     if (contact.id) {
-      await pipedriveClient.updatePersonField(contact.id, 'outreach_attempts', 0);
+      await pipedriveClient.updatePersonField(contact.id, 'Outreach Attempts', 0);
     }
 
     // 3. Log activity note
