@@ -122,15 +122,19 @@ cmd_install() {
   fi
 
   # The Node.js wrapper (scripts/run-wrapper.js) is idempotent:
+  #   - Skips if outside business hours (before 7 AM or after 9 PM)
   #   - Skips weekends
   #   - Skips if today's run file already exists
   #   - Auto-pulls from git and installs deps before running
-  # Using Node.js directly avoids macOS TCC permission issues with /bin/bash.
+  #
+  # Using StartInterval (every 10 minutes) instead of StartCalendarInterval
+  # ensures the agent fires shortly after wake from sleep. The wrapper's
+  # built-in guards prevent unnecessary work. Using Node.js directly
+  # avoids macOS TCC permission issues with /bin/bash.
   echo "Using wrapper: ${PROJECT_DIR}/scripts/run-wrapper.js"
+  echo "Schedule: every 10 minutes (wrapper handles time-of-day + weekend + idempotency)"
 
-  # Write plist (runs wrapper script instead of node directly)
-  # RunAtLoad=true ensures the agent fires on login to catch missed runs.
-  # The wrapper's idempotent guard prevents double-runs.
+  # Write plist
   cat > "$PLIST_PATH" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -148,19 +152,14 @@ cmd_install() {
   <key>WorkingDirectory</key>
   <string>${PROJECT_DIR}</string>
 
-  <key>StartCalendarInterval</key>
-  <array>
-${calendar_intervals}
-  </array>
+  <key>StartInterval</key>
+  <integer>600</integer>
 
   <key>StandardOutPath</key>
   <string>${LOG_DIR}/agent.log</string>
 
   <key>StandardErrorPath</key>
   <string>${LOG_DIR}/agent-error.log</string>
-
-  <key>RunAtLoad</key>
-  <true/>
 
   <key>KeepAlive</key>
   <false/>

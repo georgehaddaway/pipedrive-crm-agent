@@ -2,12 +2,15 @@
 // ──────────────────────────────────────────────────────────
 // Pipedrive CRM Agent — Launch Agent Wrapper
 //
-// This script is called by launchd. It is idempotent:
-//   1. Skips weekends
-//   2. Skips if today's run file already exists
-//   3. Auto-pulls from git and installs deps before running
+// This script is called by launchd every 10 minutes while
+// the Mac is awake. It is idempotent:
+//   1. Skips if outside business hours (before 7 AM or after 9 PM)
+//   2. Skips weekends
+//   3. Skips if today's run file already exists
+//   4. Auto-pulls from git and installs deps before running
 //
-// Safe to trigger on both schedule (7 AM) and login (RunAtLoad).
+// The 10-minute interval ensures the agent runs shortly after
+// the Mac wakes from sleep, even if it missed the 7 AM window.
 // ──────────────────────────────────────────────────────────
 
 import { existsSync } from 'fs';
@@ -21,20 +24,25 @@ const RUNS_DIR = join(PROJECT_DIR, 'data', 'runs');
 
 const now = new Date();
 const day = now.getDay(); // 0=Sun, 6=Sat
+const hour = now.getHours(); // local time
 const today = now.toISOString().slice(0, 10); // YYYY-MM-DD
+
+// ── Skip outside business hours ────────────────────────
+if (hour < 7 || hour >= 21) {
+  process.exit(0); // Silent exit — no log spam overnight
+}
 
 // ── Skip weekends ──────────────────────────────────────
 if (day === 0 || day === 6) {
-  console.log(`[${now.toISOString()}] Skipping: weekend.`);
-  process.exit(0);
+  process.exit(0); // Silent exit — no log spam on weekends
 }
 
 // ── Skip if today's run already completed ──────────────
 const runFile = join(RUNS_DIR, `${today}.json`);
 if (existsSync(runFile)) {
-  console.log(`[${now.toISOString()}] Skipping: today's run (${today}) already exists.`);
-  process.exit(0);
+  process.exit(0); // Silent exit — already ran today
 }
+
 
 console.log('============================================');
 console.log(`Agent run started: ${now.toISOString()}`);
