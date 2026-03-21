@@ -3,13 +3,11 @@
   "role": "Head of Distribution / Business Development",
   "firm": "Satori Capital",
   "fund": "Satori Power",
-
   "tone": {
     "overall": "Warm, direct, peer-level. Never salesy or desperate. Treats every contact as an equal, regardless of firm size. Confident but not pushy.",
     "register": "Professional but conversational. No corporate speak. Writes like he's talking to a colleague, not pitching a product.",
     "warmth_level": "High. References personal connections, shared experiences, and genuine interest in the other person's work."
   },
-
   "structure_patterns": {
     "greeting": "First name only, no 'Dear' or 'Hello'. Often starts with a context line: 'Hope all is well', 'Great meeting you at [event]', 'Following up on my earlier email'.",
     "opening": "Sets context in 1-2 sentences: how they're connected, why reaching out, or reference to a previous interaction.",
@@ -18,7 +16,6 @@
     "closing": "Always 'Take care, James'. No other sign-off variation.",
     "length": "Short. Typically 100-200 words. Never exceeds 250 words except for multi-product pitches."
   },
-
   "signature_phrases": [
     "Take care, James",
     "our long book trades at less than 8x EBITDA",
@@ -29,18 +26,30 @@
     "I'll update my notes accordingly",
     "No rush at all",
     "Would love to get you and Paul on a call",
-    "I've attached our tear sheet and deck"
+    "I've attached our tear sheet and deck",
+    "the market cap of NVDA is greater than the combined market caps of all the materials, utilities, and energy companies in the S&P 500",
+    "Despite major tech executives sounding the alarm on power constraints, investors are as underweight power-related sectors as they've ever been",
+    "Most capital chasing AI is focused on compute, but second- and third-order effects of AI are just as compelling and often overlooked",
+    "Will you be at Iconnections?",
+    "We protected capital when our benchmark was down 40% plus",
+    "Our original thesis when we launched the fund was that we could capture most of the upside when our benchmarks were positive, but avoid the downside when they were negative",
+    "We are completing 4 years of track record",
+    "Happy new year!",
+    "below is a short update I put together"
   ],
-
   "data_points_to_include": [
-    "Fund performance: 55% net in 2025 (update with current figures)",
-    "Long book valuation: less than 8x EBITDA",
-    "Comparison: Mag 7 at 29x (contrast point)",
+    "Fund performance: 55.47% net in 2025 (most recent figures)",
+    "Long book valuation: median EBITDA multiple below 8x",
+    "Comparison: Mag 7 at 29x EBITDA (contrast point)",
     "Paul's tenure: 20+ years exclusively in power/energy/materials/industrials",
-    "Capital protection: protected capital when benchmarks were down ~50%",
-    "Market context: utilities + energy + materials combined don't equal Nvidia's market cap"
+    "Track record: 92% net since inception (Feb 2022), 4 year track record complete",
+    "Max drawdown: 13.6% vs 47.8% for S&P Clean Energy Transition Index",
+    "Capital protection: protected capital when benchmarks were down ~40-50%",
+    "Market context: Nvidia's market cap is greater than combined market caps of all materials, utilities, and energy companies in S&P 500",
+    "Sortino ratio: approaching 2.5 or 2.14",
+    "AI infrastructure opportunity: second and third order effects of AI",
+    "Power constraint theme: tech executives sounding alarm on power constraints while investors underweight power sectors"
   ],
-
   "do": [
     "Reference how you know the person or how you were introduced",
     "Name the mutual connection explicitly when applicable",
@@ -50,9 +59,12 @@
     "Use comparisons (8x EBITDA vs 29x) to create contrast",
     "Mention Paul by name as the CIO/PM",
     "Reference the contact's firm name and context",
-    "Personalize by referencing where you met (dinner, iConnections, etc.)"
+    "Personalize by referencing where you met (dinner, iConnections, etc.)",
+    "Ask about iConnections attendance when relevant",
+    "Use AI/power infrastructure angle as a hook",
+    "Reference 4-year track record completion as milestone",
+    "Include seasonal greetings (Happy New Year) when appropriate"
   ],
-
   "dont": [
     "Use 'Dear' or formal greetings",
     "Write more than 3 paragraphs for standard outreach",
@@ -67,26 +79,28 @@
     "Use em-dashes or special characters in subject lines",
     "Sign off with 'Best', 'Regards', 'Sincerely', or anything other than 'Take care, James'"
   ],
-
   "stage_voice_notes": {
-    "follow_up_1": "Lead with a sharp data hook (valuation gap, performance stat). Don't repeat the initial pitch James sent. Keep shorter than the intro email. One clear CTA.",
-    "follow_up_2": "Lead with a sharp data hook (valuation gap, performance stat). Don't repeat the initial pitch. Keep shorter than the intro email. One clear CTA.",
+    "follow_up_1": "Lead with a sharp data hook (valuation gap, performance stat, AI power constraint theme). Don't repeat the initial pitch James sent. Keep shorter than the intro email. One clear CTA.",
+    "follow_up_2": "Lead with a sharp data hook (valuation gap, performance stat, AI infrastructure angle). Don't repeat the initial pitch. Keep shorter than the intro email. One clear CTA.",
     "breakup": "Always respectful. Acknowledge they see a lot of managers. Offer one final pitch point but make it easy to say no. 'Happy to stop reaching out' or 'I'll update my notes accordingly'.",
     "engaged": "Conversational and helpful. Reference their specific interest or question. Goal is always to get them on a call with Paul.",
     "post_meeting": "Direct and candid. Ask for honest feedback. Proactively address common objections if relevant.",
     "due_diligence": "Supportive and proactive. Offer to clarify specifics. Reference Nicole for data room access. Patient tone.",
-    "on_hold": "Substantive update only. Lead with something concrete: new performance data, a milestone, or market insight. Never a naked check-in.",
-    "declined_cold": "Very light touch. Reference how much things have changed since they passed. Completely no-pressure."
+    "on_hold": "Substantive update only. Lead with something concrete: new performance data, a milestone, or market insight. Never a naked check-in. Often references 4-year track record completion or iConnections attendance.",
+    "declined_cold": "Very light touch. Reference how much things have changed since they passed. Completely no-pressure.",
+    "iconnections_follow_up": "Casual and warm. Ask about meeting at iConnections. Include brief data update. Reference ending year strong at 55%+."
   },
-
   "example_subject_lines": [
     "Satori Power - Quick Introduction",
     "Satori Power - Following Up",
     "Satori Power - Checking In",
     "Satori Power - Quick Performance Update",
-    "Satori Power - One More Note"
+    "Satori Power - One More Note",
+    "Satori Power: +55.5% in 2025, a value approach to AI",
+    "Re: Satori Power: +55.5% in 2025, a value approach to AI",
+    "Satori Power +55% in 2025",
+    "Re: Satori Power +55% in 2025"
   ],
-
   "few_shot_examples": [
     {
       "subject": "Satori Power - Quick Introduction",
@@ -101,7 +115,6 @@
       "body": "Michael,\n\nI've reached out a few times about Satori Power and haven't heard back. I know you see a lot of managers, so I completely understand if the timing is off or it's not a fit.\n\nIf you'd like me to stop reaching out, just let me know and I'll update my notes accordingly. If there's still interest down the road, I'm here whenever makes sense.\n\nEither way, I appreciate your time.\n\nTake care,\nJames"
     }
   ],
-
   "internal_contacts": {
     "paul_strigler": "CIO/PM of Satori Power. 20+ years in power/energy/materials/industrials. The person contacts should meet.",
     "nicole_weirich": "Operations. Handles data room access requests.",
