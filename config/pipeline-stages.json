@@ -56,8 +56,9 @@
         "notes": "Tone: respectful close. These often get the fastest responses."
       },
       "auto_advance": {
-        "on_no_reply": "declined_cold",
-        "on_reply": "engaged"
+        "on_no_reply": null,
+        "on_reply": "engaged",
+        "manual_advance_to": ["declined_cold", "on_hold"]
       }
     },
     {

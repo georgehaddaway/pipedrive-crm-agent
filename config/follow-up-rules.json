@@ -82,7 +82,6 @@
     "rules": [
       { "trigger": "no_reply_after_max_attempts", "from": "follow_up_1", "to": "follow_up_2", "action": "advance_stage" },
       { "trigger": "no_reply_after_max_attempts", "from": "follow_up_2", "to": "breakup", "action": "advance_stage" },
-      { "trigger": "no_reply_after_max_attempts", "from": "breakup", "to": "declined_cold", "action": "advance_stage" },
       { "trigger": "reply_detected", "from": ["follow_up_1", "follow_up_2", "breakup", "on_hold"], "to": "engaged", "action": "advance_stage" }
     ]
   },
@@ -91,6 +90,7 @@
       { "id": "introducer_nudge", "label": "Introducer re-engagement suggested", "condition": "contact silent > 21 days in engaged/post_meeting/due_diligence AND introducer_person_id exists" },
       { "id": "stale_contact", "label": "Contact may be stale - review needed", "condition": "no stage movement in 180+ days AND stage is active" },
       { "id": "breakup_pending", "label": "Breakup email queued", "condition": "stage = follow_up_2 AND attempts >= max_attempts" },
+      { "id": "post_breakup_review", "label": "30 days since breakup - move to Declined or On Hold", "condition": "stage = breakup AND attempts >= max_attempts AND days_since_last_contact >= 30" },
       { "id": "hot_lead", "label": "High-priority - due diligence active", "condition": "stage = due_diligence AND days_since_last_activity < 7" }
     ]
   }
