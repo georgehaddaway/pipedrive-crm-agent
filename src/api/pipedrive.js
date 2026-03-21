@@ -505,6 +505,89 @@ async function addActivityNote(dealId, text) {
   }
 }
 
+/**
+ * Create a Pipedrive activity (reminder/task) for a person/deal.
+ * Uses v1 API since v2 activities endpoint has different semantics.
+ * @param {Object} opts
+ * @param {string} opts.subject - Activity subject line
+ * @param {string} opts.dueDate - ISO date string (YYYY-MM-DD)
+ * @param {number|string} [opts.personId] - Pipedrive person ID
+ * @param {number|string} [opts.dealId] - Pipedrive deal ID
+ * @param {string} [opts.type='task'] - Activity type (task, call, meeting, email)
+ * @param {string} [opts.note] - Optional note/description
+ * @returns {Promise<number|null>} Activity ID or null on failure
+ */
+async function createActivity({ subject, dueDate, personId, dealId, type = 'task', note = '' }) {
+  try {
+    await rateLimit();
+    const url = `https://${config.pipedrive.companyDomain}.pipedrive.com/api/v1/activities?api_token=${config.pipedrive.apiToken}`;
+    const body = {
+      subject,
+      type,
+      due_date: dueDate,
+      done: 0,
+    };
+    if (personId) body.person_id = Number(personId);
+    if (dealId) body.deal_id = Number(dealId);
+    if (note) body.note = note;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const errorBody = await res.text().catch(() => '');
+      console.warn(`  Failed to create activity: ${res.status} ${res.statusText}: ${errorBody}`);
+      return null;
+    }
+
+    const data = await res.json();
+    return data?.data?.id || null;
+  } catch (err) {
+    console.warn(`  Failed to create activity for person ${personId}: ${err.message}`);
+    return null;
+  }
+}
+
+/**
+ * Create a follow-up reminder activity for a contact after a draft is created.
+ * Sets the due date based on the contact's current stage threshold.
+ * @param {Object} contact - Contact object with id, firstName, lastName, stage, meta.dealId
+ * @returns {Promise<number|null>} Activity ID or null
+ */
+async function createFollowUpReminder(contact) {
+  const stage = contact.stage;
+  const threshold = config.rules.overdue_thresholds[stage];
+
+  // Determine subject and due date based on stage
+  let subject;
+  let dueDays;
+
+  if (stage === 'breakup') {
+    subject = `Review ${contact.firstName} ${contact.lastName} - move to Declined or On Hold`;
+    dueDays = 30; // 30 days after breakup to review
+  } else {
+    const stageConfig = config.getStageByKey(stage);
+    const stageName = stageConfig?.name || stage;
+    subject = `Follow up with ${contact.firstName} ${contact.lastName}`;
+    dueDays = threshold || 30;
+  }
+
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + dueDays);
+  const dueDateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
+
+  return createActivity({
+    subject,
+    dueDate: dueDateStr,
+    personId: contact.id,
+    dealId: contact.meta?.dealId,
+    note: `Auto-created by CRM agent after drafting ${stage} email.`,
+  });
+}
+
 // ── Public API ───────────────────────────────────────
 
 /**
@@ -533,4 +616,5 @@ export const pipedriveWriter = {
   updateDealStage,
   updatePersonField,
   addActivityNote,
+  createFollowUpReminder,
 };

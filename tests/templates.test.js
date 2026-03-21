@@ -9,7 +9,7 @@ process.env.ANTHROPIC_API_KEY = '';
 const { renderEmail } = await import('../src/templates/router.js');
 
 describe('Template Router', () => {
-  it('renders initial-cold template with data hooks', async () => {
+  it('renders followup-comparison-hook template with data hooks', async () => {
     const followUp = makeFollowUp({
       contact: {
         firstName: 'Sarah',
@@ -29,7 +29,7 @@ describe('Template Router', () => {
     assert.ok(body.includes('Paul'));
   });
 
-  it('renders initial-warm-intro when lead source is warm_intro', async () => {
+  it('renders followup template when lead source is warm_intro', async () => {
     const followUp = makeFollowUp({
       contact: {
         firstName: 'Alex',

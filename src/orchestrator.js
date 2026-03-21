@@ -136,6 +136,12 @@ export async function runPipeline(options = {}) {
             await pipedriveWriter.updatePersonField(contact.id, 'Outreach Attempts', newAttempts);
             await pipedriveWriter.updatePersonField(contact.id, 'Last Outbound Date', today);
             console.log(`  Outreach attempts: ${newAttempts}, last outbound: ${today}`);
+
+            // Create Pipedrive follow-up reminder activity
+            const activityId = await pipedriveWriter.createFollowUpReminder(contact);
+            if (activityId) {
+              console.log(`  Pipedrive reminder created (activity ID: ${activityId})`);
+            }
           }
         } catch (err) {
           console.error(`  Failed to create draft for ${contact.email}: ${err.message}`);
