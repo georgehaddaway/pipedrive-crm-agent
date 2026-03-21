@@ -54,15 +54,23 @@ async function getGmailClient() {
 }
 
 /**
- * Search Gmail for the most recent email thread with a contact.
- * Returns the date of the most recent message, or null if none found.
+ * Search Gmail for the most recent SENT email to a contact.
+ * Only matches actually sent mail (excludes drafts).
  * @param {string} email - Contact's email address
+ * @param {Object} [opts]
+ * @param {number} [opts.monthsBack=3] - How many months back to search
  * @returns {Promise<string|null>} ISO date string or null
  */
-export async function getLastEmailDate(email) {
+export async function getLastEmailDate(email, { monthsBack = 3 } = {}) {
   const gmail = await getGmailClient();
 
-  const query = `from:${email} OR to:${email}`;
+  // Calculate the date cutoff
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - monthsBack);
+  const afterDate = `${cutoff.getFullYear()}/${String(cutoff.getMonth() + 1).padStart(2, '0')}/${String(cutoff.getDate()).padStart(2, '0')}`;
+
+  // Search only sent mail, exclude drafts
+  const query = `in:sent to:${email} -in:draft after:${afterDate}`;
   const res = await gmail.users.messages.list({
     userId: 'me',
     q: query,
