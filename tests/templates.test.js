@@ -16,7 +16,7 @@ describe('Template Router', () => {
         lastName: 'Chen',
         email: 'sarah@test.com',
         company: 'Meridian Capital',
-        stage: 'initial_outreach',
+        stage: 'follow_up_2',
       },
     });
 
@@ -35,7 +35,7 @@ describe('Template Router', () => {
         firstName: 'Alex',
         lastName: 'R',
         email: 'alex@test.com',
-        stage: 'initial_outreach',
+        stage: 'follow_up_2',
         leadSource: 'warm_intro',
       },
     });
@@ -46,12 +46,12 @@ describe('Template Router', () => {
     assert.ok(body.includes('Take care'));
   });
 
-  it('renders initial-conference when lead source is conference_meeting', async () => {
+  it('renders followup template when lead source is conference_meeting', async () => {
     const followUp = makeFollowUp({
       contact: {
         firstName: 'Priya',
         email: 'priya@test.com',
-        stage: 'initial_outreach',
+        stage: 'follow_up_2',
         leadSource: 'conference_meeting',
       },
     });
@@ -59,7 +59,6 @@ describe('Template Router', () => {
     const { subject, body } = await renderEmail(followUp);
     assert.ok(!subject.includes('\u2014'), 'Subject should not contain em-dash');
     assert.ok(body.includes('Priya'));
-    assert.ok(body.includes('conference'));
     assert.ok(body.includes('Take care'));
   });
 
@@ -68,7 +67,7 @@ describe('Template Router', () => {
       contact: {
         firstName: 'Test',
         email: 'test@test.com',
-        stage: 'follow_up',
+        stage: 'follow_up_2',
       },
       attemptNumber: 1,
     });
@@ -84,7 +83,7 @@ describe('Template Router', () => {
       contact: {
         firstName: 'Test',
         email: 'test@test.com',
-        stage: 'follow_up',
+        stage: 'follow_up_2',
       },
       attemptNumber: 2,
     });
@@ -185,7 +184,7 @@ describe('Template Router', () => {
         lastName: 'User',
         email: 'test@test.com',
         company: '',
-        stage: 'initial_outreach',
+        stage: 'follow_up_2',
       },
     });
 
@@ -212,7 +211,7 @@ describe('Template Router', () => {
 
   it('never produces em-dash in any subject line', async () => {
     const stages = [
-      'initial_outreach', 'follow_up', 'breakup', 'engaged',
+      'follow_up_2', 'breakup', 'engaged',
       'post_meeting', 'due_diligence', 'on_hold', 'declined_cold',
     ];
 
@@ -237,7 +236,7 @@ function makeFollowUp(overrides = {}) {
     lastName: 'User',
     email: 'test@example.com',
     company: '',
-    stage: 'initial_outreach',
+    stage: 'follow_up_2',
     priority: 'medium',
     tags: [],
     lastContactDate: null,

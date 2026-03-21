@@ -29,7 +29,7 @@ const OUTREACH_ATTEMPTS_KEY = 'c194b45818a556a82bc66a5e00bd99e5c389e6fa';
 
 // Pipedrive stage IDs
 const STAGES = {
-  initial_outreach: 159,
+  follow_up_1: 159,
   follow_up: 160,
   breakup: 161,
   engaged: 162,
@@ -51,7 +51,7 @@ const contacts = [
     name: 'Gary Schorr',
     email: 'gary@arietcapital.com',
     org: 'Ariet Capital',
-    stage: 'initial_outreach',
+    stage: 'follow_up_1',
     leadSource: 'warm_intro',
     notes: 'SFO via Kiran Patel. Send Power intro.',
   },

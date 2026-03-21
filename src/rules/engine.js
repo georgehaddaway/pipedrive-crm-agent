@@ -256,6 +256,7 @@ export function evaluateContacts(contacts, gmailActivity) {
       ? `Never contacted. Stage: ${contact.stage}`
       : `${overdueResult.daysSince} days since last contact (threshold: ${overdueResult.threshold}). Stage: ${contact.stage}`;
 
+
     followUps.push({
       contact,
       reason,
@@ -273,6 +274,7 @@ export function evaluateContacts(contacts, gmailActivity) {
   // Filter below minimum urgency
   const minUrgency = global_defaults.min_urgency_to_draft;
   const filtered = followUps.filter(fu => fu.urgencyScore >= minUrgency);
+
 
   // Cap at max drafts per run
   const maxDrafts = global_defaults.max_drafts_per_run;

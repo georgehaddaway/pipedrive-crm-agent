@@ -2,20 +2,14 @@
   "template_dir": "src/templates/emails",
   "default_ai_polish": true,
   "stages": {
-    "initial_outreach": {
-      "selection": "by_lead_source",
-      "templates": {
-        "warm_intro": "initial-warm-intro.hbs",
-        "mutual_connection": "initial-warm-intro.hbs",
-        "conference_meeting": "initial-conference.hbs",
-        "conference_lead": "initial-conference.hbs",
-        "inbound_inquiry": "initial-warm-intro.hbs",
-        "default": "initial-cold.hbs"
-      },
-      "ai_polish": true,
-      "ai_instructions": "This is a first-touch email. Reference the specific connection point if the lead source or CRM notes mention one (who introduced them, where they met). Keep the fund pitch to 2-3 sentences. Attach materials, don't paste content inline. The ask is always a call with Paul, never a meeting with James. If no connection point exists, lead with the valuation gap."
+    "follow_up_1": {
+      "_comment": "Follow Up #1 is handled manually by James. No agent drafts.",
+      "selection": "none",
+      "templates": {},
+      "ai_polish": false,
+      "ai_instructions": null
     },
-    "follow_up": {
+    "follow_up_2": {
       "selection": "by_attempt_number",
       "templates": {
         "1": "followup-performance-hook.hbs",
@@ -23,7 +17,7 @@
         "default": "followup-general.hbs"
       },
       "ai_polish": true,
-      "ai_instructions": "This is a follow-up to a previous email that got no response. Do NOT repeat the initial pitch. Lead with a single sharp data point (valuation gap, performance stat, market context). Keep shorter than the intro email. One clear CTA (call with Paul or send materials). Acknowledge they're busy without being apologetic."
+      "ai_instructions": "This is a follow-up to an initial email James sent manually (30+ days ago with no response). Do NOT repeat the initial pitch. Lead with a single sharp data point (valuation gap, performance stat, market context). Keep shorter than the intro email. One clear CTA (call with Paul or send materials). Acknowledge they're busy without being apologetic."
     },
     "breakup": {
       "selection": "single",

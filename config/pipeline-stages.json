@@ -7,35 +7,35 @@
   },
   "stages": [
     {
-      "key": "initial_outreach",
-      "name": "Initial Outreach",
+      "key": "follow_up_1",
+      "name": "Follow Up #1",
       "order": 1,
       "type": "active",
       "deal_probability": 5,
-      "description": "First touch — warm intro, conference follow-up, or cold email from distribution list.",
+      "description": "First touch — warm intro, conference follow-up, or cold email. Done manually by James, not by the agent.",
       "follow_up": {
-        "threshold_days": 4,
-        "max_attempts": 1,
-        "cadence": "one-time",
-        "notes": "Single outreach. If no response, auto-advance to Follow-Up stage after threshold."
+        "threshold_days": null,
+        "max_attempts": 0,
+        "cadence": "manual",
+        "notes": "James handles initial outreach personally. The agent does NOT create drafts for this stage."
       },
       "auto_advance": {
-        "on_no_reply": "follow_up",
+        "on_no_reply": "follow_up_2",
         "on_reply": "engaged"
       }
     },
     {
-      "key": "follow_up",
-      "name": "Follow-Up",
+      "key": "follow_up_2",
+      "name": "Follow Up #2",
       "order": 2,
       "type": "active",
       "deal_probability": 3,
-      "description": "1-2 additional emails if no response. Each adds one new hook (performance data, comparison, etc).",
+      "description": "Automated follow-ups if no response to initial outreach. One draft every 30 days. After 3 total ignored emails (1 manual + 2 automated), advance to breakup.",
       "follow_up": {
-        "threshold_days": 5,
+        "threshold_days": 30,
         "max_attempts": 2,
         "cadence": "sequential",
-        "notes": "Short, punchy emails with one new data point each. After max_attempts exhausted, advance to Breakup."
+        "notes": "Draft every 30 days with one new hook (performance data, comparison, etc). After 2 attempts with no reply, advance to Breakup."
       },
       "auto_advance": {
         "on_no_reply": "breakup",
@@ -166,8 +166,8 @@
     }
   ],
   "stage_key_map": {
-    "initial_outreach": 1,
-    "follow_up": 2,
+    "follow_up_1": 1,
+    "follow_up_2": 2,
     "breakup": 3,
     "engaged": 4,
     "post_meeting": 5,

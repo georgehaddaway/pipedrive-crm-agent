@@ -2,8 +2,8 @@
   "pipeline_id": 2,
   "pipeline_name": "Business Development",
   "stages": {
-    "initial_outreach": 159,
-    "follow_up": 160,
+    "follow_up_1": 159,
+    "follow_up_2": 160,
     "breakup": 161,
     "engaged": 162,
     "post_meeting": 163,

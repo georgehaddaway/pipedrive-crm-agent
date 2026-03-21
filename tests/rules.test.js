@@ -16,13 +16,13 @@ describe('Rules Engine (9-stage)', () => {
     emptyGmail = new Map();
   });
 
-  it('flags a contact overdue by stage threshold (initial_outreach = 4 days)', () => {
+  it('flags a contact overdue by stage threshold (follow_up_2 = 30 days)', () => {
     const contacts = [
       makeContact({
         email: 'overdue@test.com',
-        stage: 'initial_outreach',
+        stage: 'follow_up_2',
         priority: 'medium',
-        lastContactDate: daysAgo(15),
+        lastContactDate: daysAgo(40),
       }),
     ];
 
@@ -35,7 +35,7 @@ describe('Rules Engine (9-stage)', () => {
     const contacts = [
       makeContact({
         email: 'recent@test.com',
-        stage: 'initial_outreach',
+        stage: 'follow_up_2',
         priority: 'medium',
         lastContactDate: daysAgo(2),
       }),
@@ -63,7 +63,7 @@ describe('Rules Engine (9-stage)', () => {
     const contacts = [
       makeContact({
         email: 'dnc@test.com',
-        stage: 'initial_outreach',
+        stage: 'follow_up_2',
         lastContactDate: daysAgo(30),
         tags: ['do-not-contact'],
       }),
@@ -77,7 +77,7 @@ describe('Rules Engine (9-stage)', () => {
     const contacts = [
       makeContact({
         email: 'legal@test.com',
-        stage: 'follow_up',
+        stage: 'follow_up_2',
         lastContactDate: daysAgo(30),
         tags: ['legal-hold'],
       }),
@@ -106,7 +106,7 @@ describe('Rules Engine (9-stage)', () => {
     const contacts = [
       makeContact({
         email: 'gmail-pref@test.com',
-        stage: 'initial_outreach',
+        stage: 'follow_up_2',
         priority: 'medium',
         lastContactDate: daysAgo(10),
       }),
@@ -146,7 +146,7 @@ describe('Rules Engine (9-stage)', () => {
     for (let i = 0; i < 20; i++) {
       contacts.push(makeContact({
         email: `contact${i}@test.com`,
-        stage: 'follow_up',
+        stage: 'follow_up_2',
         priority: 'high',
         lastContactDate: daysAgo(10),
       }));
@@ -160,9 +160,9 @@ describe('Rules Engine (9-stage)', () => {
     const contacts = [
       makeContact({
         email: 'maxed@test.com',
-        stage: 'initial_outreach',
-        lastContactDate: daysAgo(10),
-        outreachAttempts: 1, // limit for initial_outreach is 1
+        stage: 'follow_up_2',
+        lastContactDate: daysAgo(40),
+        outreachAttempts: 2, // limit for follow_up_2 is 2
       }),
     ];
 
@@ -173,15 +173,15 @@ describe('Rules Engine (9-stage)', () => {
   it('scores warm_intro higher than cold_email at the same stage', () => {
     const warm = makeContact({
       email: 'warm@test.com',
-      stage: 'follow_up',
+      stage: 'follow_up_2',
       leadSource: 'warm_intro',
-      lastContactDate: daysAgo(10),
+      lastContactDate: daysAgo(35),
     });
     const cold = makeContact({
       email: 'cold@test.com',
-      stage: 'follow_up',
+      stage: 'follow_up_2',
       leadSource: 'cold_email',
-      lastContactDate: daysAgo(10),
+      lastContactDate: daysAgo(35),
     });
 
     const result = evaluateContacts([warm, cold], emptyGmail);
@@ -193,7 +193,7 @@ describe('Rules Engine (9-stage)', () => {
       `warm_intro (${warmResult.urgencyScore}) should score higher than cold_email (${coldResult.urgencyScore})`);
   });
 
-  it('weights due_diligence stage higher than initial_outreach', () => {
+  it('weights due_diligence stage higher than follow_up_2', () => {
     const dd = makeContact({
       email: 'dd@test.com',
       stage: 'due_diligence',
@@ -201,8 +201,8 @@ describe('Rules Engine (9-stage)', () => {
     });
     const initial = makeContact({
       email: 'initial@test.com',
-      stage: 'initial_outreach',
-      lastContactDate: daysAgo(15),
+      stage: 'follow_up_2',
+      lastContactDate: daysAgo(40),
     });
 
     const result = evaluateContacts([dd, initial], emptyGmail);
@@ -211,12 +211,12 @@ describe('Rules Engine (9-stage)', () => {
     const ddResult = result.find(r => r.contact.email === 'dd@test.com');
     const initialResult = result.find(r => r.contact.email === 'initial@test.com');
     assert.ok(ddResult.urgencyScore > initialResult.urgencyScore,
-      `due_diligence (${ddResult.urgencyScore}) should score higher than initial_outreach (${initialResult.urgencyScore})`);
+      `due_diligence (${ddResult.urgencyScore}) should score higher than follow_up_2 (${initialResult.urgencyScore})`);
   });
 
   it('handles all 9 stages without error', () => {
     const stages = [
-      'initial_outreach', 'follow_up', 'breakup', 'engaged',
+      'follow_up_1', 'follow_up_2', 'breakup', 'engaged',
       'post_meeting', 'due_diligence', 'committed', 'on_hold', 'declined_cold'
     ];
 
@@ -278,7 +278,7 @@ function makeContact(overrides = {}) {
     lastName: overrides.lastName || 'User',
     email: overrides.email || 'test@example.com',
     company: overrides.company || 'Test Corp',
-    stage: overrides.stage || 'initial_outreach',
+    stage: overrides.stage || 'follow_up_2',
     priority: overrides.priority || 'medium',
     tags: overrides.tags || [],
     lastContactDate: overrides.lastContactDate || null,

@@ -69,8 +69,8 @@
   ],
 
   "stage_voice_notes": {
-    "initial_outreach": "Lead with the connection point (who introduced them, where you met). Keep the fund pitch to 2-3 sentences max. Attach materials, don't paste content inline. Make the ask a call with Paul, not a meeting with James.",
-    "follow_up": "Lead with a sharp data hook (valuation gap, performance stat). Don't repeat the initial pitch. Keep shorter than the intro email. One clear CTA.",
+    "follow_up_1": "James handles initial outreach personally. The agent does not draft emails for this stage.",
+    "follow_up_2": "Lead with a sharp data hook (valuation gap, performance stat). Don't repeat the initial pitch. Keep shorter than the intro email. One clear CTA.",
     "breakup": "Always respectful. Acknowledge they see a lot of managers. Offer one final pitch point but make it easy to say no. 'Happy to stop reaching out' or 'I'll update my notes accordingly'.",
     "engaged": "Conversational and helpful. Reference their specific interest or question. Goal is always to get them on a call with Paul.",
     "post_meeting": "Direct and candid. Ask for honest feedback. Proactively address common objections if relevant.",

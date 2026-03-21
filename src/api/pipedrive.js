@@ -244,7 +244,7 @@ function normalizeContact(raw) {
     lastName: raw.lastName || raw.last_name || raw['Last Name'] || extractLastName(raw.name || raw.person_name || ''),
     email: extractEmail(raw),
     company: raw.company || raw.org_name || raw.organization || raw['Organization'] || '',
-    stage: normalizeStage(raw.stage || raw.deal_stage || raw.pipeline_stage || raw.Stage || 'initial_outreach'),
+    stage: normalizeStage(raw.stage || raw.deal_stage || raw.pipeline_stage || raw.Stage || 'follow_up_1'),
     priority: normalizePriority(raw.priority || raw.Priority || raw.label || 'medium'),
     tags: parseTags(raw.tags || raw.Tags || raw.label || ''),
     lastContactDate: raw.lastContactDate || raw.last_contact_date || raw.last_activity_date || raw['Last Contact'] || null,
@@ -328,7 +328,7 @@ function normalizeStage(stage) {
     return normalized === key || k.includes(key) || key.includes(k);
   });
 
-  return match || 'initial_outreach';
+  return match || 'follow_up_1';
 }
 
 function normalizePriority(priority) {
@@ -394,7 +394,7 @@ async function fetchContactsFromAPI() {
   // 3. Build contacts with stage resolution via pipedrive-ids
   return persons.map(person => {
     const deal = personDealMap.get(person.id);
-    const stageKey = config.getStageKeyByPipedriveId(deal?.stage_id) || 'initial_outreach';
+    const stageKey = config.getStageKeyByPipedriveId(deal?.stage_id) || 'follow_up_1';
 
     // Extract custom deal fields
     const dataRoomAccessKey = getDealFieldKey('Data Room Access');

@@ -4,7 +4,7 @@ import config from '../config/index.js';
  * Evaluate which contacts should be auto-advanced to a new stage.
  * 
  * Auto-advancement rules:
- * - Stages 1-3 (initial_outreach, follow_up, breakup): fully automated on no-reply after max attempts
+ * - Stages 1-3 (follow_up_1, follow_up_2, breakup): fully automated on no-reply after max attempts
  * - Reply detected from stages 1-3 or on_hold: auto-advance to engaged
  * - Stages 4+ (engaged onward): NEVER auto-advanced, flag only
  *
@@ -167,9 +167,9 @@ export function detectBreakupPending(contacts) {
   const flags = [];
 
   for (const contact of contacts) {
-    if (contact.stage !== 'follow_up') continue;
+    if (contact.stage !== 'follow_up_2') continue;
 
-    const attemptLimit = config.rules.attempt_limits.follow_up;
+    const attemptLimit = config.rules.attempt_limits.follow_up_2;
     const attempts = contact.outreachAttempts || 0;
 
     if (attempts >= attemptLimit) {
