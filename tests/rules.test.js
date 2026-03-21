@@ -162,7 +162,7 @@ describe('Rules Engine (9-stage)', () => {
         email: 'maxed@test.com',
         stage: 'follow_up_2',
         lastContactDate: daysAgo(40),
-        outreachAttempts: 2, // limit for follow_up_2 is 2
+        outreachAttempts: 1, // limit for follow_up_2 is 1
       }),
     ];
 

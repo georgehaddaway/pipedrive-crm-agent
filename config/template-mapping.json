@@ -3,21 +3,20 @@
   "default_ai_polish": true,
   "stages": {
     "follow_up_1": {
-      "_comment": "Follow Up #1 is handled manually by James. No agent drafts.",
-      "selection": "none",
-      "templates": {},
-      "ai_polish": false,
-      "ai_instructions": null
-    },
-    "follow_up_2": {
-      "selection": "by_attempt_number",
+      "selection": "single",
       "templates": {
-        "1": "followup-performance-hook.hbs",
-        "2": "followup-comparison-hook.hbs",
-        "default": "followup-general.hbs"
+        "default": "followup-performance-hook.hbs"
       },
       "ai_polish": true,
-      "ai_instructions": "This is a follow-up to an initial email James sent manually (30+ days ago with no response). Do NOT repeat the initial pitch. Lead with a single sharp data point (valuation gap, performance stat, market context). Keep shorter than the intro email. One clear CTA (call with Paul or send materials). Acknowledge they're busy without being apologetic."
+      "ai_instructions": "This is the first follow-up after James's manual initial outreach (30+ days ago with no response). Do NOT repeat the initial pitch. Lead with a single sharp data point (valuation gap, performance stat, market context). Keep shorter than the intro email. One clear CTA (call with Paul or send materials). Acknowledge they're busy without being apologetic."
+    },
+    "follow_up_2": {
+      "selection": "single",
+      "templates": {
+        "default": "followup-comparison-hook.hbs"
+      },
+      "ai_polish": true,
+      "ai_instructions": "This is the second and final follow-up. The contact ignored both James's initial email and Follow Up #1. Lead with a different angle than the first follow-up - a valuation comparison, market context, or competitive insight. Very concise. One sentence acknowledging this is the last reach-out before going quiet. One clear CTA."
     },
     "breakup": {
       "selection": "single",

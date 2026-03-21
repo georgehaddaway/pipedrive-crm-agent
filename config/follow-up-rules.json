@@ -19,14 +19,14 @@
   },
   "exclusions": {
     "tags": ["do-not-contact", "legal-hold", "unsubscribed", "paused"],
-    "stages": ["committed", "follow_up_1"],
+    "stages": ["committed"],
     "conditions": [
       { "field": "email_bounced", "operator": "eq", "value": true, "action": "skip" },
       { "field": "days_since_last_outbound", "operator": "lt", "value": 1, "action": "skip", "reason": "Already contacted today" }
     ]
   },
   "overdue_thresholds": {
-    "follow_up_1": null,
+    "follow_up_1": 30,
     "follow_up_2": 30,
     "breakup": 7,
     "engaged": 5,
@@ -48,7 +48,7 @@
       "distribution_list": 0.5
     },
     "stage_weights": {
-      "follow_up_1": 0.0,
+      "follow_up_1": 0.5,
       "follow_up_2": 0.6,
       "breakup": 0.7,
       "engaged": 0.9,
@@ -60,8 +60,8 @@
     "recency_decay": { "enabled": true, "half_life_days": 90, "floor": 0.1 }
   },
   "attempt_limits": {
-    "follow_up_1": 0,
-    "follow_up_2": 2,
+    "follow_up_1": 1,
+    "follow_up_2": 1,
     "breakup": 1,
     "engaged": 4,
     "post_meeting": 3,
@@ -80,6 +80,7 @@
   "auto_stage_advancement": {
     "enabled": true,
     "rules": [
+      { "trigger": "no_reply_after_max_attempts", "from": "follow_up_1", "to": "follow_up_2", "action": "advance_stage" },
       { "trigger": "no_reply_after_max_attempts", "from": "follow_up_2", "to": "breakup", "action": "advance_stage" },
       { "trigger": "no_reply_after_max_attempts", "from": "breakup", "to": "declined_cold", "action": "advance_stage" },
       { "trigger": "reply_detected", "from": ["follow_up_1", "follow_up_2", "breakup", "on_hold"], "to": "engaged", "action": "advance_stage" }

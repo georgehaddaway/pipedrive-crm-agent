@@ -12,12 +12,12 @@
       "order": 1,
       "type": "active",
       "deal_probability": 5,
-      "description": "First touch — warm intro, conference follow-up, or cold email. Done manually by James, not by the agent.",
+      "description": "First automated follow-up, 30 days after James's manual initial outreach.",
       "follow_up": {
-        "threshold_days": null,
-        "max_attempts": 0,
-        "cadence": "manual",
-        "notes": "James handles initial outreach personally. The agent does NOT create drafts for this stage."
+        "threshold_days": 30,
+        "max_attempts": 1,
+        "cadence": "one-time",
+        "notes": "Single follow-up with a data hook. If no reply, auto-advance to Follow Up #2."
       },
       "auto_advance": {
         "on_no_reply": "follow_up_2",
@@ -30,12 +30,12 @@
       "order": 2,
       "type": "active",
       "deal_probability": 3,
-      "description": "Automated follow-ups if no response to initial outreach. One draft every 30 days. After 3 total ignored emails (1 manual + 2 automated), advance to breakup.",
+      "description": "Second automated follow-up, 30 days after Follow Up #1. Last attempt before breakup.",
       "follow_up": {
         "threshold_days": 30,
-        "max_attempts": 2,
-        "cadence": "sequential",
-        "notes": "Draft every 30 days with one new hook (performance data, comparison, etc). After 2 attempts with no reply, advance to Breakup."
+        "max_attempts": 1,
+        "cadence": "one-time",
+        "notes": "Different hook than Follow Up #1. After no reply, auto-advance to Breakup."
       },
       "auto_advance": {
         "on_no_reply": "breakup",

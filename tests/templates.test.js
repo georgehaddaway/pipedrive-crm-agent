@@ -67,7 +67,7 @@ describe('Template Router', () => {
       contact: {
         firstName: 'Test',
         email: 'test@test.com',
-        stage: 'follow_up_2',
+        stage: 'follow_up_1',
       },
       attemptNumber: 1,
     });

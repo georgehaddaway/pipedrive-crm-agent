@@ -69,7 +69,7 @@
   ],
 
   "stage_voice_notes": {
-    "follow_up_1": "James handles initial outreach personally. The agent does not draft emails for this stage.",
+    "follow_up_1": "Lead with a sharp data hook (valuation gap, performance stat). Don't repeat the initial pitch James sent. Keep shorter than the intro email. One clear CTA.",
     "follow_up_2": "Lead with a sharp data hook (valuation gap, performance stat). Don't repeat the initial pitch. Keep shorter than the intro email. One clear CTA.",
     "breakup": "Always respectful. Acknowledge they see a lot of managers. Offer one final pitch point but make it easy to say no. 'Happy to stop reaching out' or 'I'll update my notes accordingly'.",
     "engaged": "Conversational and helpful. Reference their specific interest or question. Goal is always to get them on a call with Paul.",
