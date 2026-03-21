@@ -67,6 +67,27 @@ export async function runPipeline(options = {}) {
     console.log('  Skipped (Gmail not configured).');
   }
 
+  // ── Step 2b: Sync Last Outbound Date for new contacts ──
+  if (!dryRun && config.pipedrive.useApi && gmailActivity.size > 0) {
+    let synced = 0;
+    for (const contact of contacts) {
+      // Only sync contacts with no lastOutboundDate but with Gmail history
+      if (contact.lastOutboundDate) continue;
+      const gmailDate = gmailActivity.get(contact.email);
+      if (!gmailDate) continue;
+
+      const d = new Date(gmailDate);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      try {
+        await pipedriveWriter.updatePersonField(contact.id, 'Last Outbound Date', dateStr);
+        synced++;
+      } catch { /* non-critical, skip */ }
+    }
+    if (synced > 0) {
+      console.log(`  Synced Last Outbound Date for ${synced} new contact(s).`);
+    }
+  }
+
   // ── Step 3: Evaluate follow-up rules ──────────────
   console.log('Step 3/7: Evaluating follow-up rules...');
   const followUps = evaluateContacts(contacts, gmailActivity);
