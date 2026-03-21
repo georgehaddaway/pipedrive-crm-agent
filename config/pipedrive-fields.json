@@ -19,9 +19,9 @@
     },
     "introducer_person_id": {
       "name": "Introducer",
-      "field_type": "person",
+      "field_type": "text",
       "required": false,
-      "description": "Person who made the introduction. Used for introducer re-engagement flags."
+      "description": "Name or ID of the person who made the introduction. Used for introducer re-engagement flags."
     },
     "last_outbound_date": {
       "name": "Last Outbound Date",
