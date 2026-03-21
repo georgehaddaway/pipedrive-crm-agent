@@ -25,7 +25,7 @@ const RUNS_DIR = join(PROJECT_DIR, 'data', 'runs');
 const now = new Date();
 const day = now.getDay(); // 0=Sun, 6=Sat
 const hour = now.getHours(); // local time
-const today = now.toISOString().slice(0, 10); // YYYY-MM-DD
+const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
 // ── Skip outside business hours ────────────────────────
 if (hour < 7 || hour >= 21) {

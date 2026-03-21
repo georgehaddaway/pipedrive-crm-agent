@@ -131,7 +131,8 @@ export async function runPipeline(options = {}) {
           // Auto-increment outreach attempts and update last outbound date
           if (contact.id && config.pipedrive.useApi) {
             const newAttempts = (contact.outreachAttempts || 0) + 1;
-            const today = new Date().toISOString().split('T')[0];
+            const d = new Date();
+            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
             await pipedriveWriter.updatePersonField(contact.id, 'Outreach Attempts', newAttempts);
             await pipedriveWriter.updatePersonField(contact.id, 'Last Outbound Date', today);
             console.log(`  Outreach attempts: ${newAttempts}, last outbound: ${today}`);
@@ -257,7 +258,8 @@ function buildReport(contacts, followUps, drafts, flags, advancements, dryRun, e
  */
 function saveRunReport(report) {
   mkdirSync(config.paths.runsDir, { recursive: true });
-  const date = new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const filename = `${date}.json`;
   const filepath = `${config.paths.runsDir}/${filename}`;
   writeFileSync(filepath, JSON.stringify(report, null, 2));
