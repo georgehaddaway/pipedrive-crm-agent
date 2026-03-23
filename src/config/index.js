@@ -213,6 +213,7 @@ const config = {
   // ── Anthropic (optional) ─────────────────────────
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY || null,
+    model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
     get enabled() {
       return Boolean(this.apiKey);
     },

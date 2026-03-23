@@ -253,7 +253,7 @@ async function analyzeEmailsAndUpdateProfile(emails, currentProfile) {
     .join('\n\n');
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
     max_tokens: 4096,
     messages: [
       {
@@ -318,7 +318,7 @@ async function generateWritingAnalysis(emails, updatedProfile) {
     .join('\n\n');
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: process.env.ANTHROPIC_MODEL || 'claude-3-opus-20240229',
     max_tokens: 6000,
     messages: [
       {

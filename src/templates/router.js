@@ -276,7 +276,7 @@ BODY:
 <email body>`;
 
     const response = await anthropicClient.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: config.anthropic.model,
       max_tokens: 1024,
       system: systemMessage,
       messages: [{ role: 'user', content: userMessage }],
