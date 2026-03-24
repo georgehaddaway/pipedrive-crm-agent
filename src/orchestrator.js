@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'fs';
 import config from './config/index.js';
 import { getContacts, getDataSource, pipedriveWriter } from './api/pipedrive.js';
-import { batchGetLastEmailDates, createDraft } from './gmail/client.js';
+import { batchGetLastEmailDates, batchGetRecentThreads, createDraft } from './gmail/client.js';
 import { evaluateContacts, detectStaleContacts } from './rules/engine.js';
 import { evaluateAdvancements, applyAdvancement, detectBreakupPending, detectHotLeads } from './rules/advancement.js';
 import { evaluateIntroducerNudges } from './rules/introducer.js';
@@ -100,6 +100,29 @@ export async function runPipeline(options = {}) {
       console.log(`           ${fu.reason}`);
     }
     console.log('');
+  }
+
+  // ── Step 3b: Fetch email thread history for follow-ups ──
+  let emailThreads = new Map();
+  if (!dryRun && config.gmail.clientId && followUps.length > 0) {
+    console.log('Step 3b: Fetching email history for follow-up contacts...');
+    try {
+      const followUpEmails = followUps.map(fu => fu.contact.email).filter(Boolean);
+      emailThreads = await batchGetRecentThreads(followUpEmails);
+      const withHistory = [...emailThreads.values()].filter(s => s.length > 0).length;
+      console.log(`  Fetched email history for ${withHistory}/${followUpEmails.length} contacts.`);
+    } catch (err) {
+      console.warn(`  Email history fetch failed: ${err.message}`);
+      console.warn('  Drafts will be composed without prior correspondence context.');
+      errors.push(`Email history fetch failed: ${err.message}`);
+    }
+
+    // Attach thread history to each followUp
+    for (const followUp of followUps) {
+      followUp.emailHistory = emailThreads.get(followUp.contact.email) || [];
+    }
+  } else if (dryRun) {
+    console.log('Step 3b: Skipped email history (dry run).');
   }
 
   // ── Step 4: Evaluate stage advancements ───────────

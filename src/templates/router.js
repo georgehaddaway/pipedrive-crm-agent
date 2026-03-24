@@ -148,7 +148,8 @@ export async function renderEmail(followUp) {
 
   if (shouldPolish) {
     const aiInstructions = stageMapping?.ai_instructions || null;
-    const result = await polishWithAI(subject, body, contact, followUp, aiInstructions);
+    const emailHistory = followUp.emailHistory || [];
+    const result = await polishWithAI(subject, body, contact, followUp, aiInstructions, emailHistory);
     return { subject: cleanSubject(result.subject), body: result.body };
   }
 
@@ -192,9 +193,10 @@ function cleanSubject(subject) {
  * @param {Object} contact
  * @param {Object} followUp - Full follow-up context (attemptNumber, daysSince, etc.)
  * @param {string|null} aiInstructions - Stage-specific tone/style instructions
+ * @param {Array<{ direction: string, date: string, subject: string, snippet: string }>} emailHistory - Recent emails with this contact
  * @returns {Promise<{ subject: string, body: string }>}
  */
-async function polishWithAI(subject, body, contact, followUp, aiInstructions) {
+async function polishWithAI(subject, body, contact, followUp, aiInstructions, emailHistory = []) {
   try {
     if (!anthropicClient) {
       const Anthropic = (await import('@anthropic-ai/sdk')).default;
@@ -255,7 +257,14 @@ Days since last contact: ${followUp.daysSinceLastContact || 'Unknown'}
 ${contact.notes ? `CRM notes: ${contact.notes}` : ''}
 </contact>
 
-${stageVoice ? `<stage_guidance>\n${stageVoice}\n</stage_guidance>\n` : ''}${aiInstructions ? `<tone_guidance>\n${aiInstructions}\n</tone_guidance>\n` : ''}
+${emailHistory.length > 0 ? `<prior_correspondence>
+Below are the most recent emails exchanged with this contact (newest first). Review them carefully.
+${emailHistory.map((msg, i) => `--- ${msg.direction === 'sent' ? 'WE SENT' : 'THEY SENT'} (${msg.date ? new Date(msg.date).toLocaleDateString() : 'unknown date'}) ---
+Subject: ${msg.subject}
+${msg.snippet}`).join('\n\n')}
+</prior_correspondence>
+
+` : ''}${stageVoice ? `<stage_guidance>\n${stageVoice}\n</stage_guidance>\n` : ''}${aiInstructions ? `<tone_guidance>\n${aiInstructions}\n</tone_guidance>\n` : ''}
 <draft>
 Subject: ${subject}
 
@@ -269,6 +278,7 @@ Rewrite this draft in ${vp.sender || 'the sender'}'s voice. Rules:
 4. Subject line must use plain hyphens (-), never em-dashes or special characters
 5. Do NOT use exclamation marks
 6. Keep it under 200 words
+7. Review the prior correspondence above (if any). Do NOT repeat the same message or talking points already sent. Write a natural continuation of the conversation. If they replied, acknowledge what they said.
 
 Return ONLY this format, nothing else:
 SUBJECT: <subject line>

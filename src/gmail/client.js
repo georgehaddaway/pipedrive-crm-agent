@@ -123,6 +123,139 @@ export async function batchGetLastEmailDates(emails, concurrency = 5) {
 }
 
 /**
+ * Fetch recent email messages (sent and received) with a given contact.
+ * Returns an array of snippet objects in reverse chronological order.
+ *
+ * @param {string} email - Contact's email address
+ * @param {Object} [opts]
+ * @param {number} [opts.maxMessages=5] - Max messages to return
+ * @param {number} [opts.monthsBack=3] - How far back to search
+ * @param {number} [opts.snippetLength=500] - Max chars per body snippet
+ * @returns {Promise<Array<{ direction: string, date: string, subject: string, snippet: string }>>}
+ */
+export async function getRecentThreadSnippets(email, { maxMessages = 5, monthsBack = 3, snippetLength = 500 } = {}) {
+  const gmail = await getGmailClient();
+
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - monthsBack);
+  const afterDate = `${cutoff.getFullYear()}/${String(cutoff.getMonth() + 1).padStart(2, '0')}/${String(cutoff.getDate()).padStart(2, '0')}`;
+
+  // Search for all mail with this contact (sent or received), excluding drafts
+  const query = `(from:${email} OR to:${email}) -in:draft after:${afterDate}`;
+  const listRes = await gmail.users.messages.list({
+    userId: 'me',
+    q: query,
+    maxResults: maxMessages,
+  });
+
+  const messages = listRes.data.messages;
+  if (!messages || messages.length === 0) return [];
+
+  const snippets = [];
+
+  for (const msgRef of messages) {
+    try {
+      const msg = await gmail.users.messages.get({
+        userId: 'me',
+        id: msgRef.id,
+        format: 'full',
+      });
+
+      const headers = msg.data.payload?.headers || [];
+      const fromHeader = headers.find(h => h.name.toLowerCase() === 'from')?.value || '';
+      const dateHeader = headers.find(h => h.name.toLowerCase() === 'date')?.value || '';
+      const subjectHeader = headers.find(h => h.name.toLowerCase() === 'subject')?.value || '(no subject)';
+
+      // Determine direction: if the From header contains the contact's email, it's inbound
+      const isInbound = fromHeader.toLowerCase().includes(email.toLowerCase());
+
+      // Extract plaintext body
+      const bodyText = extractPlainText(msg.data.payload);
+      const truncated = bodyText.length > snippetLength
+        ? bodyText.slice(0, snippetLength) + '...'
+        : bodyText;
+
+      snippets.push({
+        direction: isInbound ? 'received' : 'sent',
+        date: dateHeader ? new Date(dateHeader).toISOString() : '',
+        subject: subjectHeader,
+        snippet: truncated,
+      });
+    } catch (err) {
+      // Skip individual message errors
+      console.warn(`  Failed to read message ${msgRef.id}: ${err.message}`);
+    }
+  }
+
+  return snippets;
+}
+
+/**
+ * Extract plaintext from a Gmail message payload.
+ * Walks the MIME tree looking for text/plain parts.
+ *
+ * @param {Object} payload - Gmail message payload
+ * @returns {string} Plaintext body
+ */
+function extractPlainText(payload) {
+  if (!payload) return '';
+
+  // Single-part message
+  if (payload.mimeType === 'text/plain' && payload.body?.data) {
+    return Buffer.from(payload.body.data, 'base64').toString('utf-8');
+  }
+
+  // Multipart: recurse into parts
+  if (payload.parts) {
+    for (const part of payload.parts) {
+      if (part.mimeType === 'text/plain' && part.body?.data) {
+        return Buffer.from(part.body.data, 'base64').toString('utf-8');
+      }
+      // Recurse for nested multipart
+      if (part.parts) {
+        const nested = extractPlainText(part);
+        if (nested) return nested;
+      }
+    }
+  }
+
+  // Fallback: use the API snippet field
+  return payload.snippet || '';
+}
+
+/**
+ * Batch lookup of recent email threads for multiple contacts.
+ * Processes in parallel with concurrency limit.
+ *
+ * @param {string[]} emails
+ * @param {Object} [opts]
+ * @param {number} [opts.concurrency=3] - Parallel requests (lower than date lookups to avoid quota)
+ * @param {number} [opts.maxMessages=5]
+ * @returns {Promise<Map<string, Array<{ direction: string, date: string, subject: string, snippet: string }>>>}
+ */
+export async function batchGetRecentThreads(emails, { concurrency = 3, maxMessages = 5 } = {}) {
+  const results = new Map();
+  const queue = [...emails];
+
+  async function worker() {
+    while (queue.length > 0) {
+      const email = queue.shift();
+      try {
+        const snippets = await getRecentThreadSnippets(email, { maxMessages });
+        results.set(email, snippets);
+      } catch (err) {
+        console.warn(`  Failed to fetch thread history for ${email}: ${err.message}`);
+        results.set(email, []);
+      }
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, emails.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
+/**
  * Create a draft email in the user's Gmail drafts folder.
  * @param {string} to - Recipient email address
  * @param {string} subject - Email subject

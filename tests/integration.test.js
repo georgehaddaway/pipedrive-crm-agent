@@ -261,6 +261,34 @@ describe('Gmail API', () => {
     // Having messages is expected but not strictly required
     assert.ok(res.data.resultSizeEstimate >= 0, 'Result size should be non-negative');
   });
+
+  it('getRecentThreadSnippets returns valid snippet objects', async () => {
+    const { getRecentThreadSnippets } = await import('../src/gmail/client.js');
+
+    // Use the sender's own email to guarantee results
+    const senderEmail = process.env.SENDER_EMAIL;
+    if (!senderEmail) {
+      console.log('  Skipped: SENDER_EMAIL not set');
+      return;
+    }
+
+    const snippets = await getRecentThreadSnippets(senderEmail, { maxMessages: 2 });
+    assert.ok(Array.isArray(snippets), 'Should return an array');
+
+    for (const s of snippets) {
+      assert.ok(['sent', 'received'].includes(s.direction), `Invalid direction: ${s.direction}`);
+      assert.ok(typeof s.subject === 'string', 'Subject should be a string');
+      assert.ok(typeof s.snippet === 'string', 'Snippet should be a string');
+      assert.ok(s.snippet.length <= 503, `Snippet too long: ${s.snippet.length} chars`); // 500 + '...'
+      assert.ok(s.date, 'Date should be present');
+    }
+
+    if (snippets.length > 0) {
+      console.log(`  Retrieved ${snippets.length} snippet(s). First: [${snippets[0].direction}] ${snippets[0].subject}`);
+    } else {
+      console.log('  No recent emails found (this is OK for a fresh account)');
+    }
+  });
 });
 
 // ─────────────────────────────────────────────────────
