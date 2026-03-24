@@ -19,7 +19,7 @@ function createOAuth2Client() {
 
 /**
  * Get an authenticated Gmail API client.
- * Loads stored refresh token and auto-refreshes access token.
+ * Loads token from GMAIL_TOKEN_JSON env var (cloud) or file (local).
  * @returns {Promise<import('googleapis').gmail_v1.Gmail>}
  */
 async function getGmailClient() {
@@ -31,23 +31,31 @@ async function getGmailClient() {
     );
   }
 
-  if (!existsSync(config.gmail.tokenPath)) {
+  // Load token: prefer env var (cloud), fall back to file (local)
+  let tokenData;
+  const tokenFromEnv = process.env.GMAIL_TOKEN_JSON;
+
+  if (tokenFromEnv) {
+    tokenData = JSON.parse(tokenFromEnv);
+  } else if (existsSync(config.gmail.tokenPath)) {
+    tokenData = JSON.parse(readFileSync(config.gmail.tokenPath, 'utf-8'));
+  } else {
     throw new Error(
-      `Gmail token not found at ${config.gmail.tokenPath}.\n` +
-      `Run 'npm run auth' to complete the OAuth flow first.`
+      `Gmail token not found. Set GMAIL_TOKEN_JSON env var or run 'npm run auth' locally.`
     );
   }
 
-  const tokenData = JSON.parse(readFileSync(config.gmail.tokenPath, 'utf-8'));
   const oauth2 = createOAuth2Client();
   oauth2.setCredentials(tokenData);
 
-  // Auto-persist refreshed tokens
-  oauth2.on('tokens', (tokens) => {
-    const existing = JSON.parse(readFileSync(config.gmail.tokenPath, 'utf-8'));
-    const updated = { ...existing, ...tokens };
-    writeFileSync(config.gmail.tokenPath, JSON.stringify(updated, null, 2));
-  });
+  // Auto-persist refreshed tokens (only when using file-based token)
+  if (!tokenFromEnv) {
+    oauth2.on('tokens', (tokens) => {
+      const existing = JSON.parse(readFileSync(config.gmail.tokenPath, 'utf-8'));
+      const updated = { ...existing, ...tokens };
+      writeFileSync(config.gmail.tokenPath, JSON.stringify(updated, null, 2));
+    });
+  }
 
   gmailClient = google.gmail({ version: 'v1', auth: oauth2 });
   return gmailClient;
