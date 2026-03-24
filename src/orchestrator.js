@@ -109,17 +109,20 @@ export async function runPipeline(options = {}) {
     try {
       const followUpEmails = followUps.map(fu => fu.contact.email).filter(Boolean);
       emailThreads = await batchGetRecentThreads(followUpEmails);
-      const withHistory = [...emailThreads.values()].filter(s => s.length > 0).length;
-      console.log(`  Fetched email history for ${withHistory}/${followUpEmails.length} contacts.`);
+      const withHistory = [...emailThreads.values()].filter(r => r.snippets.length > 0).length;
+      const withThread = [...emailThreads.values()].filter(r => r.threadInfo).length;
+      console.log(`  Fetched email history for ${withHistory}/${followUpEmails.length} contacts (${withThread} with existing threads).`);
     } catch (err) {
       console.warn(`  Email history fetch failed: ${err.message}`);
       console.warn('  Drafts will be composed without prior correspondence context.');
       errors.push(`Email history fetch failed: ${err.message}`);
     }
 
-    // Attach thread history to each followUp
+    // Attach thread history and threading info to each followUp
     for (const followUp of followUps) {
-      followUp.emailHistory = emailThreads.get(followUp.contact.email) || [];
+      const result = emailThreads.get(followUp.contact.email) || { snippets: [], threadInfo: null };
+      followUp.emailHistory = result.snippets;
+      followUp.threadInfo = result.threadInfo;
     }
   } else if (dryRun) {
     console.log('Step 3b: Skipped email history (dry run).');
@@ -168,9 +171,10 @@ export async function runPipeline(options = {}) {
 
       if (!dryRun) {
         try {
-          draftId = await createDraft(contact.email, subject, body);
+          draftId = await createDraft(contact.email, subject, body, followUp.threadInfo || null);
           created = true;
-          console.log(`  Draft created for ${contact.email} (ID: ${draftId})`);
+          const replyMode = followUp.threadInfo ? 'reply-in-thread' : 'standalone';
+          console.log(`  Draft created for ${contact.email} (ID: ${draftId}, ${replyMode})`);
 
           // Auto-increment outreach attempts and update last outbound date
           if (contact.id && config.pipedrive.useApi) {

@@ -262,7 +262,7 @@ describe('Gmail API', () => {
     assert.ok(res.data.resultSizeEstimate >= 0, 'Result size should be non-negative');
   });
 
-  it('getRecentThreadSnippets returns valid snippet objects', async () => {
+  it('getRecentThreadSnippets returns valid snippets and threadInfo', async () => {
     const { getRecentThreadSnippets } = await import('../src/gmail/client.js');
 
     // Use the sender's own email to guarantee results
@@ -272,10 +272,11 @@ describe('Gmail API', () => {
       return;
     }
 
-    const snippets = await getRecentThreadSnippets(senderEmail, { maxMessages: 2 });
-    assert.ok(Array.isArray(snippets), 'Should return an array');
+    const result = await getRecentThreadSnippets(senderEmail, { maxMessages: 2 });
+    assert.ok(result && typeof result === 'object', 'Should return an object');
+    assert.ok(Array.isArray(result.snippets), 'result.snippets should be an array');
 
-    for (const s of snippets) {
+    for (const s of result.snippets) {
       assert.ok(['sent', 'received'].includes(s.direction), `Invalid direction: ${s.direction}`);
       assert.ok(typeof s.subject === 'string', 'Subject should be a string');
       assert.ok(typeof s.snippet === 'string', 'Snippet should be a string');
@@ -283,10 +284,18 @@ describe('Gmail API', () => {
       assert.ok(s.date, 'Date should be present');
     }
 
-    if (snippets.length > 0) {
-      console.log(`  Retrieved ${snippets.length} snippet(s). First: [${snippets[0].direction}] ${snippets[0].subject}`);
+    // Validate threadInfo shape when present
+    if (result.threadInfo) {
+      assert.ok(result.threadInfo.threadId, 'threadInfo should have threadId');
+      assert.ok(typeof result.threadInfo.messageId === 'string', 'threadInfo.messageId should be a string');
+      assert.ok(typeof result.threadInfo.subject === 'string', 'threadInfo.subject should be a string');
+      console.log(`  Thread found: ${result.threadInfo.subject} (threadId: ${result.threadInfo.threadId})`);
     } else {
-      console.log('  No recent emails found (this is OK for a fresh account)');
+      console.log('  No threadInfo (no recent emails or fresh account)');
+    }
+
+    if (result.snippets.length > 0) {
+      console.log(`  Retrieved ${result.snippets.length} snippet(s). First: [${result.snippets[0].direction}] ${result.snippets[0].subject}`);
     }
   });
 });

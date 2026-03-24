@@ -124,14 +124,15 @@ export async function batchGetLastEmailDates(emails, concurrency = 5) {
 
 /**
  * Fetch recent email messages (sent and received) with a given contact.
- * Returns an array of snippet objects in reverse chronological order.
+ * Returns snippet objects in reverse chronological order, plus threading
+ * metadata from the most recent message for reply-in-thread support.
  *
  * @param {string} email - Contact's email address
  * @param {Object} [opts]
  * @param {number} [opts.maxMessages=5] - Max messages to return
  * @param {number} [opts.monthsBack=3] - How far back to search
  * @param {number} [opts.snippetLength=500] - Max chars per body snippet
- * @returns {Promise<Array<{ direction: string, date: string, subject: string, snippet: string }>>}
+ * @returns {Promise<{ snippets: Array<{ direction: string, date: string, subject: string, snippet: string }>, threadInfo: { threadId: string, messageId: string, subject: string, references: string } | null }>}
  */
 export async function getRecentThreadSnippets(email, { maxMessages = 5, monthsBack = 3, snippetLength = 500 } = {}) {
   const gmail = await getGmailClient();
@@ -149,9 +150,10 @@ export async function getRecentThreadSnippets(email, { maxMessages = 5, monthsBa
   });
 
   const messages = listRes.data.messages;
-  if (!messages || messages.length === 0) return [];
+  if (!messages || messages.length === 0) return { snippets: [], threadInfo: null };
 
   const snippets = [];
+  let threadInfo = null;
 
   for (const msgRef of messages) {
     try {
@@ -165,6 +167,18 @@ export async function getRecentThreadSnippets(email, { maxMessages = 5, monthsBa
       const fromHeader = headers.find(h => h.name.toLowerCase() === 'from')?.value || '';
       const dateHeader = headers.find(h => h.name.toLowerCase() === 'date')?.value || '';
       const subjectHeader = headers.find(h => h.name.toLowerCase() === 'subject')?.value || '(no subject)';
+
+      // Capture threading metadata from the most recent message (first in list)
+      if (!threadInfo && msg.data.threadId) {
+        const messageId = headers.find(h => h.name.toLowerCase() === 'message-id')?.value || '';
+        const references = headers.find(h => h.name.toLowerCase() === 'references')?.value || '';
+        threadInfo = {
+          threadId: msg.data.threadId,
+          messageId,
+          subject: subjectHeader,
+          references,
+        };
+      }
 
       // Determine direction: if the From header contains the contact's email, it's inbound
       const isInbound = fromHeader.toLowerCase().includes(email.toLowerCase());
@@ -187,7 +201,7 @@ export async function getRecentThreadSnippets(email, { maxMessages = 5, monthsBa
     }
   }
 
-  return snippets;
+  return { snippets, threadInfo };
 }
 
 /**
@@ -231,7 +245,7 @@ function extractPlainText(payload) {
  * @param {Object} [opts]
  * @param {number} [opts.concurrency=3] - Parallel requests (lower than date lookups to avoid quota)
  * @param {number} [opts.maxMessages=5]
- * @returns {Promise<Map<string, Array<{ direction: string, date: string, subject: string, snippet: string }>>>}
+ * @returns {Promise<Map<string, { snippets: Array, threadInfo: Object|null }>>}
  */
 export async function batchGetRecentThreads(emails, { concurrency = 3, maxMessages = 5 } = {}) {
   const results = new Map();
@@ -241,11 +255,11 @@ export async function batchGetRecentThreads(emails, { concurrency = 3, maxMessag
     while (queue.length > 0) {
       const email = queue.shift();
       try {
-        const snippets = await getRecentThreadSnippets(email, { maxMessages });
-        results.set(email, snippets);
+        const result = await getRecentThreadSnippets(email, { maxMessages });
+        results.set(email, result);
       } catch (err) {
         console.warn(`  Failed to fetch thread history for ${email}: ${err.message}`);
-        results.set(email, []);
+        results.set(email, { snippets: [], threadInfo: null });
       }
     }
   }
@@ -257,28 +271,50 @@ export async function batchGetRecentThreads(emails, { concurrency = 3, maxMessag
 
 /**
  * Create a draft email in the user's Gmail drafts folder.
+ * When threadInfo is provided, the draft is created as a reply within
+ * the existing thread so the recipient sees the full conversation.
+ *
  * @param {string} to - Recipient email address
  * @param {string} subject - Email subject
  * @param {string} body - Email body (plain text)
+ * @param {{ threadId: string, messageId: string, subject: string, references: string }|null} [threadInfo=null] - Threading metadata for reply-in-thread
  * @returns {Promise<string>} Draft ID
  */
-export async function createDraft(to, subject, body) {
+export async function createDraft(to, subject, body, threadInfo = null) {
   const gmail = await getGmailClient();
 
   const senderLine = config.sender.email
     ? `${config.sender.name} <${config.sender.email}>`
     : config.sender.name;
 
-  // Construct RFC 2822 message
+  // If replying in-thread, use Re: prefix on the original subject
+  let finalSubject = subject;
+  if (threadInfo) {
+    const baseSubject = threadInfo.subject.replace(/^Re:\s*/i, '');
+    finalSubject = `Re: ${baseSubject}`;
+  }
+
+  // Construct RFC 2822 message headers
   const messageParts = [
     `From: ${senderLine}`,
     `To: ${to}`,
     `Bcc: satoriir@pipedrivemail.com`,
-    `Subject: ${subject}`,
-    'Content-Type: text/plain; charset=utf-8',
-    '',
-    body,
+    `Subject: ${finalSubject}`,
   ];
+
+  // Add threading headers for reply-in-thread
+  if (threadInfo && threadInfo.messageId) {
+    messageParts.push(`In-Reply-To: ${threadInfo.messageId}`);
+    const refs = threadInfo.references
+      ? `${threadInfo.references} ${threadInfo.messageId}`
+      : threadInfo.messageId;
+    messageParts.push(`References: ${refs}`);
+  }
+
+  messageParts.push('Content-Type: text/plain; charset=utf-8');
+  messageParts.push('');
+  messageParts.push(body);
+
   const rawMessage = messageParts.join('\n');
 
   // Base64url encode
@@ -288,10 +324,16 @@ export async function createDraft(to, subject, body) {
     .replace(/\//g, '_')
     .replace(/=+$/, '');
 
+  // Build the message object; include threadId for reply-in-thread
+  const messageObj = { raw: encoded };
+  if (threadInfo) {
+    messageObj.threadId = threadInfo.threadId;
+  }
+
   const res = await gmail.users.drafts.create({
     userId: 'me',
     requestBody: {
-      message: { raw: encoded },
+      message: messageObj,
     },
   });
 
