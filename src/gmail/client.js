@@ -62,6 +62,69 @@ async function getGmailClient() {
 }
 
 /**
+ * Check Gmail drafts for contacts that already have an unsent draft.
+ * Returns a Set of email addresses that should be skipped to avoid duplicates.
+ *
+ * @param {string[]} contactEmails - List of contact emails to check against
+ * @returns {Promise<Set<string>>} Set of emails that already have a pending draft
+ */
+export async function getExistingDraftsForContacts(contactEmails) {
+  const gmail = await getGmailClient();
+  const contactSet = new Set(contactEmails.map(e => e.toLowerCase()));
+  const draftsFor = new Set();
+
+  try {
+    // Fetch all drafts (paginated)
+    let pageToken = null;
+    const allDrafts = [];
+
+    do {
+      const listParams = { userId: 'me', maxResults: 100 };
+      if (pageToken) listParams.pageToken = pageToken;
+
+      const res = await gmail.users.drafts.list(listParams);
+      const drafts = res.data.drafts || [];
+      allDrafts.push(...drafts);
+      pageToken = res.data.nextPageToken || null;
+    } while (pageToken);
+
+    if (allDrafts.length === 0) return draftsFor;
+
+    // Check each draft's To header against contact list
+    for (const draft of allDrafts) {
+      try {
+        const msg = await gmail.users.drafts.get({
+          userId: 'me',
+          id: draft.id,
+          format: 'metadata',
+          metadataHeaders: ['To'],
+        });
+
+        const toHeader = msg.data.message?.payload?.headers?.find(
+          h => h.name.toLowerCase() === 'to'
+        )?.value || '';
+
+        // Extract email address from "Name <email>" format
+        const emailMatch = toHeader.match(/<([^>]+)>/) || [null, toHeader];
+        const toEmail = (emailMatch[1] || '').trim().toLowerCase();
+
+        if (toEmail && contactSet.has(toEmail)) {
+          draftsFor.add(toEmail);
+        }
+      } catch (err) {
+        // Skip individual draft errors
+        console.warn(`  Failed to read draft ${draft.id}: ${err.message}`);
+      }
+    }
+  } catch (err) {
+    console.warn(`  Draft dedup check failed: ${err.message}`);
+    // Return empty set on failure -- better to risk a duplicate than skip all contacts
+  }
+
+  return draftsFor;
+}
+
+/**
  * Search Gmail for the most recent SENT email to a contact.
  * Only matches actually sent mail (excludes drafts).
  * @param {string} email - Contact's email address

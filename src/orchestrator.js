@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'fs';
 import config from './config/index.js';
 import { getContacts, getDataSource, pipedriveWriter } from './api/pipedrive.js';
-import { batchGetLastEmailDates, batchGetRecentThreads, createDraft } from './gmail/client.js';
+import { batchGetLastEmailDates, batchGetRecentThreads, createDraft, getExistingDraftsForContacts } from './gmail/client.js';
 import { evaluateContacts, detectStaleContacts } from './rules/engine.js';
 import { evaluateAdvancements, applyAdvancement, detectBreakupPending, detectHotLeads } from './rules/advancement.js';
 import { evaluateIntroducerNudges } from './rules/introducer.js';
@@ -88,9 +88,38 @@ export async function runPipeline(options = {}) {
     }
   }
 
+  // ── Step 2c: Check for existing unsent drafts ─────
+  let contactsWithDrafts = new Set();
+  if (!dryRun && config.gmail.clientId) {
+    console.log('Step 2c: Checking for existing unsent drafts...');
+    try {
+      const allEmails = contacts.map(c => c.email).filter(Boolean);
+      contactsWithDrafts = await getExistingDraftsForContacts(allEmails);
+      if (contactsWithDrafts.size > 0) {
+        console.log(`  Found existing drafts for ${contactsWithDrafts.size} contact(s) — these will be skipped.`);
+      } else {
+        console.log('  No existing drafts found.');
+      }
+    } catch (err) {
+      console.warn(`  Draft dedup check failed: ${err.message}`);
+      errors.push(`Draft dedup check failed: ${err.message}`);
+    }
+  }
+
   // ── Step 3: Evaluate follow-up rules ──────────────
   console.log('Step 3/7: Evaluating follow-up rules...');
-  const followUps = evaluateContacts(contacts, gmailActivity);
+  let followUps = evaluateContacts(contacts, gmailActivity);
+
+  // Filter out contacts who already have an unsent draft
+  if (contactsWithDrafts.size > 0) {
+    const beforeCount = followUps.length;
+    followUps = followUps.filter(fu => !contactsWithDrafts.has(fu.contact.email.toLowerCase()));
+    const skipped = beforeCount - followUps.length;
+    if (skipped > 0) {
+      console.log(`  Skipped ${skipped} contact(s) with existing unsent drafts.`);
+    }
+  }
+
   console.log(`  ${followUps.length} contacts need follow-up (max ${config.rules.global_defaults.max_drafts_per_run} per run).`);
 
   if (verbose && followUps.length > 0) {
