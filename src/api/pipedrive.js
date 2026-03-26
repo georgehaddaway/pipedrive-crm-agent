@@ -618,6 +618,46 @@ async function createFollowUpReminder(contact) {
   });
 }
 
+// ── Notes Fetching ───────────────────────────────────
+
+/**
+ * Fetch Pipedrive Notes (the Notes section in the UI) for a person.
+ * Uses the v1 API since v2 notes endpoints are not fully available.
+ * Returns the most recent 5 notes concatenated, truncated to 2000 chars.
+ *
+ * @param {string|number} personId - Pipedrive person ID
+ * @returns {Promise<string>} Concatenated note content, or empty string on failure
+ */
+export async function getPersonNotes(personId) {
+  try {
+    await rateLimit();
+    const url = `https://${config.pipedrive.companyDomain}.pipedrive.com/api/v1/notes?api_token=${config.pipedrive.apiToken}&person_id=${personId}&sort=add_time DESC&limit=5`;
+    const res = await fetch(url);
+
+    if (!res.ok) return '';
+
+    const data = await res.json();
+    const notes = data.data || [];
+
+    if (notes.length === 0) return '';
+
+    const combined = notes
+      .map(n => {
+        // Strip HTML tags from note content
+        const text = (n.content || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        return text;
+      })
+      .filter(Boolean)
+      .join('\n---\n');
+
+    // Truncate to 2000 chars to keep the prompt manageable
+    return combined.length > 2000 ? combined.slice(0, 2000) + '...' : combined;
+  } catch (err) {
+    console.warn(`  Failed to fetch notes for person ${personId}: ${err.message}`);
+    return '';
+  }
+}
+
 // ── Public API ───────────────────────────────────────
 
 /**

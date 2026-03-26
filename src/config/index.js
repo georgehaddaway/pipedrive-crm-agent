@@ -219,6 +219,11 @@ const config = {
     },
   },
 
+  // ── Web Enrichment (optional) ───────────────────
+  enrichment: {
+    enabled: process.env.ENRICHMENT_ENABLED !== 'false',
+  },
+
   // ── Schedule ─────────────────────────────────────
   cron: process.env.CRON_SCHEDULE || '0 7 * * 1-5',
 

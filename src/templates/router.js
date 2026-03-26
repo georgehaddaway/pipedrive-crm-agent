@@ -149,7 +149,9 @@ export async function renderEmail(followUp) {
   if (shouldPolish) {
     const aiInstructions = stageMapping?.ai_instructions || null;
     const emailHistory = followUp.emailHistory || [];
-    const result = await polishWithAI(subject, body, contact, followUp, aiInstructions, emailHistory);
+    const pipedriveNotes = followUp.pipedriveNotes || '';
+    const webEnrichment = followUp.webEnrichment || { webSnippets: [] };
+    const result = await polishWithAI(subject, body, contact, followUp, aiInstructions, emailHistory, pipedriveNotes, webEnrichment);
     return { subject: cleanSubject(result.subject), body: result.body };
   }
 
@@ -194,9 +196,11 @@ function cleanSubject(subject) {
  * @param {Object} followUp - Full follow-up context (attemptNumber, daysSince, etc.)
  * @param {string|null} aiInstructions - Stage-specific tone/style instructions
  * @param {Array<{ direction: string, date: string, subject: string, snippet: string }>} emailHistory - Recent emails with this contact
+ * @param {string} pipedriveNotes - Concatenated Pipedrive notes for the contact
+ * @param {{ webSnippets: string[] }} webEnrichment - Web search enrichment data
  * @returns {Promise<{ subject: string, body: string }>}
  */
-async function polishWithAI(subject, body, contact, followUp, aiInstructions, emailHistory = []) {
+async function polishWithAI(subject, body, contact, followUp, aiInstructions, emailHistory = [], pipedriveNotes = '', webEnrichment = { webSnippets: [] }) {
   try {
     if (!anthropicClient) {
       const Anthropic = (await import('@anthropic-ai/sdk')).default;
@@ -257,7 +261,17 @@ Days since last contact: ${followUp.daysSinceLastContact || 'Unknown'}
 ${contact.notes ? `CRM notes: ${contact.notes}` : ''}
 </contact>
 
-${emailHistory.length > 0 ? `<prior_correspondence>
+${pipedriveNotes ? `<pipedrive_notes>
+The following are internal CRM notes about this contact (most recent first). Use any relevant details to make the email feel more personal and contextual, but do NOT reference the notes directly or reveal that you have internal notes.
+${pipedriveNotes}
+</pipedrive_notes>
+
+` : ''}${webEnrichment.webSnippets.length > 0 ? `<web_research>
+The following are web search results about this contact and/or their company. Use any relevant details to add a natural, personal touch (e.g., reference a recent company milestone or shared interest), but do NOT make it obvious you researched them. Use at most 1-2 subtle references.
+${webEnrichment.webSnippets.join('\n')}
+</web_research>
+
+` : ''}${emailHistory.length > 0 ? `<prior_correspondence>
 Below are the most recent emails exchanged with this contact (newest first). Review them carefully.
 ${emailHistory.map((msg, i) => `--- ${msg.direction === 'sent' ? 'WE SENT' : 'THEY SENT'} (${msg.date ? new Date(msg.date).toLocaleDateString() : 'unknown date'}) ---
 Subject: ${msg.subject}
@@ -273,12 +287,13 @@ ${body}
 
 Rewrite this draft in ${vp.sender || 'the sender'}'s voice. Rules:
 1. Keep the same intent and core information
-2. Do NOT invent facts, meetings, or details not in the draft or contact notes
+2. Do NOT invent facts, meetings, or details not in the draft, contact notes, CRM notes, or web research
 3. The sign-off MUST be "Take care,\\n${vp.sender || config.sender?.name || 'James'}"
 4. Subject line must use plain hyphens (-), never em-dashes or special characters
 5. Do NOT use exclamation marks
 6. Keep it under 200 words
 7. Review the prior correspondence above (if any). Do NOT repeat the same message or talking points already sent. Write a natural continuation of the conversation. If they replied, acknowledge what they said.
+8. If CRM notes or web research provide relevant context, weave in at most 1-2 natural references. Never reveal your data sources.
 
 Return ONLY this format, nothing else:
 SUBJECT: <subject line>

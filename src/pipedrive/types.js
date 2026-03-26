@@ -52,6 +52,8 @@
  * @property {string} templateName - Template routing key
  * @property {number} attemptNumber - Which follow-up attempt this is
  * @property {Object} [stageConfig] - Full stage config from pipeline-stages.json
+ * @property {string} [pipedriveNotes] - Concatenated Pipedrive notes for this contact
+ * @property {{ webSnippets: string[] }} [webEnrichment] - Web search enrichment data
  */
 
 /**

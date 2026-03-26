@@ -1,12 +1,13 @@
 import { mkdirSync, writeFileSync } from 'fs';
 import config from './config/index.js';
-import { getContacts, getDataSource, pipedriveWriter } from './api/pipedrive.js';
+import { getContacts, getDataSource, pipedriveWriter, getPersonNotes } from './api/pipedrive.js';
 import { batchGetLastEmailDates, batchGetRecentThreads, createDraft, getExistingDraftsForContacts } from './gmail/client.js';
 import { evaluateContacts, detectStaleContacts } from './rules/engine.js';
 import { evaluateAdvancements, applyAdvancement, detectBreakupPending, detectHotLeads } from './rules/advancement.js';
 import { evaluateIntroducerNudges } from './rules/introducer.js';
 import { renderEmail } from './templates/router.js';
 import { postSummary, postError } from './summary/builder.js';
+import { enrichContact } from './enrichment/enrichment.js';
 
 /**
  * Run the full pipeline: fetch contacts, evaluate rules, advance stages,
@@ -155,6 +156,33 @@ export async function runPipeline(options = {}) {
     }
   } else if (dryRun) {
     console.log('Step 3b: Skipped email history (dry run).');
+  }
+
+  // ── Step 3c: Enrich contacts for AI personalization ──
+  if (!dryRun && config.anthropic.enabled && followUps.length > 0) {
+    console.log('Step 3c: Enriching contacts for AI personalization...');
+    let notesCount = 0;
+    let webCount = 0;
+
+    for (const followUp of followUps) {
+      const { contact } = followUp;
+
+      // Fetch Pipedrive notes in parallel with web enrichment
+      const [pipedriveNotes, webEnrichment] = await Promise.all([
+        config.pipedrive.useApi ? getPersonNotes(contact.id) : Promise.resolve(''),
+        enrichContact(contact),
+      ]);
+
+      followUp.pipedriveNotes = pipedriveNotes;
+      followUp.webEnrichment = webEnrichment;
+
+      if (pipedriveNotes) notesCount++;
+      if (webEnrichment.webSnippets.length > 0) webCount++;
+    }
+
+    console.log(`  Enriched ${followUps.length} contacts: ${notesCount} with Pipedrive notes, ${webCount} with web data.`);
+  } else if (dryRun) {
+    console.log('Step 3c: Skipped contact enrichment (dry run).');
   }
 
   // ── Step 4: Evaluate stage advancements ───────────
