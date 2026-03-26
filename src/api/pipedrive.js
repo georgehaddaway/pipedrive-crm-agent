@@ -567,11 +567,27 @@ async function createActivity({ subject, dueDate, personId, dealId, type = 'task
 
 /**
  * Create a follow-up reminder activity for a contact after a draft is created.
+ * Skips creation if the contact already has an open (undone) activity.
  * Sets the due date based on the contact's current stage threshold.
  * @param {Object} contact - Contact object with id, firstName, lastName, stage, meta.dealId
  * @returns {Promise<number|null>} Activity ID or null
  */
 async function createFollowUpReminder(contact) {
+  // Check for existing open activities for this person -- skip if one exists
+  try {
+    await rateLimit();
+    const checkUrl = `https://${config.pipedrive.companyDomain}.pipedrive.com/api/v1/activities?api_token=${config.pipedrive.apiToken}&person_id=${contact.id}&done=0&limit=1`;
+    const checkRes = await fetch(checkUrl);
+    const checkData = await checkRes.json();
+    if (checkData.data && checkData.data.length > 0) {
+      console.log(`  Skipped reminder for ${contact.firstName} ${contact.lastName} (existing open task: "${checkData.data[0].subject}")`);
+      return null;
+    }
+  } catch (err) {
+    // Non-critical: if check fails, proceed with creation
+    console.warn(`  Activity check failed for ${contact.firstName} ${contact.lastName}: ${err.message}`);
+  }
+
   const stage = contact.stage;
   const threshold = config.rules.overdue_thresholds[stage];
 
