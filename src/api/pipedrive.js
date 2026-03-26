@@ -157,6 +157,8 @@ function parseCsvLine(line) {
 /** @type {Map<string, string>} human name -> Pipedrive field key hash */
 let personFieldKeys = null;
 let dealFieldKeys = null;
+/** @type {Map<number, string>} Pipedrive label ID -> label name (lowercase) */
+let personLabelMap = new Map();
 
 /**
  * Discover custom field key hashes from Pipedrive.
@@ -179,6 +181,12 @@ async function discoverFieldKeys() {
     const personData = await personRes.json();
     for (const field of personData.data || []) {
       personFieldKeys.set(field.name, field.key);
+      // Build label ID -> name map from the label field's options
+      if (field.key === 'label' && field.options) {
+        for (const opt of field.options) {
+          personLabelMap.set(opt.id, opt.label.toLowerCase());
+        }
+      }
     }
 
     await rateLimit();
@@ -400,12 +408,18 @@ async function fetchContactsFromAPI() {
     const dataRoomAccessKey = getDealFieldKey('Data Room Access');
     const paulMeetingDateKey = getDealFieldKey('Paul Meeting Date');
 
+    // Resolve label_ids to human-readable names for exclusion matching
+    const labelNames = (person.label_ids || [])
+      .map(id => personLabelMap.get(id))
+      .filter(Boolean);
+
     return normalizeContact({
       id: person.id,
       name: person.name,
       emails: person.emails || [],
       org_name: person.org_name || '',
       label: person.label || '',
+      tags: labelNames,
       notes: person.notes || '',
       last_activity_date: person.last_activity_date || null,
       next_activity_date: person.next_activity_date || null,
