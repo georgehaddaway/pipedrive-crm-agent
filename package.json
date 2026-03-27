@@ -16,7 +16,7 @@
     "remove-schedule": "bash scripts/launchd-setup.sh uninstall",
     "schedule-status": "bash scripts/launchd-setup.sh status",
     "update-voice": "node scripts/refresh-voice.js",
-    "test": "node --test tests/rules.test.js tests/templates.test.js",
+    "test": "node --test tests/rules.test.js tests/templates.test.js tests/deal-state.test.js",
     "test:integration": "node --test tests/integration.test.js",
     "test:all": "node --test tests/*.test.js",
     "healthcheck": "node scripts/healthcheck.js"

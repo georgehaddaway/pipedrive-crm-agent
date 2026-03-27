@@ -8,6 +8,7 @@ import { evaluateIntroducerNudges } from './rules/introducer.js';
 import { renderEmail } from './templates/router.js';
 import { postSummary, postError } from './summary/builder.js';
 import { enrichContact } from './enrichment/enrichment.js';
+import { loadPreviousDealStates, saveDealStates, detectDealChanges } from './rules/deal-state.js';
 
 /**
  * Run the full pipeline: fetch contacts, evaluate rules, advance stages,
@@ -45,6 +46,73 @@ export async function runPipeline(options = {}) {
   if (contacts.length === 0) {
     console.log('  No contacts found. Nothing to do.');
     return buildReport(contacts, [], [], [], [], dryRun, errors);
+  }
+
+  // ── Step 1b: Detect deal changes ──────────────────
+  console.log('Step 1b: Detecting deal changes...');
+  let dealChanges = { newDeals: [], stageChanges: [] };
+  try {
+    const previousStates = loadPreviousDealStates();
+    dealChanges = detectDealChanges(contacts, previousStates);
+    const totalChanges = dealChanges.newDeals.length + dealChanges.stageChanges.length;
+    if (totalChanges > 0) {
+      console.log(`  Detected ${dealChanges.newDeals.length} new deal(s), ${dealChanges.stageChanges.length} stage change(s).`);
+      if (verbose) {
+        for (const c of dealChanges.newDeals) {
+          console.log(`    [NEW] ${c.firstName} ${c.lastName} (${c.email}) in ${c.stage}`);
+        }
+        for (const sc of dealChanges.stageChanges) {
+          console.log(`    [MOVED] ${sc.contact.firstName} ${sc.contact.lastName}: ${sc.fromStage} -> ${sc.toStage}`);
+        }
+      }
+    } else {
+      console.log('  No deal changes detected since last run.');
+    }
+  } catch (err) {
+    console.warn(`  Deal change detection failed: ${err.message}`);
+    errors.push(`Deal change detection failed: ${err.message}`);
+  }
+
+  // ── Step 1c: Create tasks for deal changes ────────
+  if (!dryRun && config.pipedrive.useApi) {
+    const changedContacts = [
+      ...dealChanges.newDeals,
+      ...dealChanges.stageChanges.map(sc => sc.contact),
+    ];
+
+    if (changedContacts.length > 0) {
+      console.log('Step 1c: Creating tasks for deal changes...');
+      let tasksCreated = 0;
+
+      for (const contact of changedContacts) {
+        // Skip excluded stages (committed, etc.) and contacts without deals
+        const stageConfig = config.getStageByKey(contact.stage);
+        if (!stageConfig || stageConfig.follow_up.threshold_days === null) continue;
+        if (!contact.meta?.dealId) continue;
+
+        // Skip contacts with excluded tags
+        const excludedTags = config.rules.exclusions.tags || [];
+        const hasExcludedTag = contact.tags?.some(t => excludedTags.includes(t.toLowerCase()));
+        if (hasExcludedTag) continue;
+
+        try {
+          const activityId = await pipedriveWriter.createFollowUpReminder(contact);
+          if (activityId) {
+            tasksCreated++;
+            console.log(`  Task created for ${contact.firstName} ${contact.lastName} in ${contact.stage} (activity ID: ${activityId})`);
+          }
+        } catch (err) {
+          console.warn(`  Task creation failed for ${contact.email}: ${err.message}`);
+        }
+      }
+
+      if (tasksCreated > 0) {
+        console.log(`  Created ${tasksCreated} task(s) for deal changes.`);
+      }
+    }
+  } else if (dryRun && (dealChanges.newDeals.length > 0 || dealChanges.stageChanges.length > 0)) {
+    const total = dealChanges.newDeals.length + dealChanges.stageChanges.length;
+    console.log(`Step 1c: [DRY RUN] Would create tasks for ${total} deal change(s).`);
   }
 
   // ── Step 2: Check Gmail activity ──────────────────
@@ -300,6 +368,13 @@ export async function runPipeline(options = {}) {
     }
   } else {
     console.log('  Skipped (dry run).');
+  }
+
+  // ── Save deal states for next run ─────────────────
+  try {
+    saveDealStates(contacts);
+  } catch (err) {
+    console.warn(`  Failed to save deal states: ${err.message}`);
   }
 
   // ── Save run report ───────────────────────────────
